@@ -2,27 +2,28 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg-deep:    #13141f;
-  --bg-mid:     #1a1b2e;
-  --bg-panel:   #1e2035;
-  --bg-row:     #1e2035;
-  --bg-hover:   #252740;
-  --bg-sel:     #2d3057;
-  --border:     #2e3155;
-  --border-lt:  #3a3d6b;
+  /* Monokai palette */
+  --bg-deep:    #1e1f1c;
+  --bg-mid:     #272822;
+  --bg-panel:   #2d2e28;
+  --bg-row:     #2d2e28;
+  --bg-hover:   #3e3d32;
+  --bg-sel:     #49483e;
+  --border:     #3b3c35;
+  --border-lt:  #55564d;
 
-  --text-pri:   #e2e4f0;
-  --text-sec:   #8b90b8;
-  --text-muted: #555a80;
-  --text-dim:   #3d4170;
+  --text-pri:   #f8f8f2;
+  --text-sec:   #c9c9c1;
+  --text-muted: #90908a;
+  --text-dim:   #75715e;
 
-  --accent:     #7c6af7;
-  --accent-lt:  #a69df9;
-  --teal:       #4ecdc4;
-  --pink:       #ff6b9d;
-  --green:      #68d391;
-  --amber:      #f6c347;
-  --red:        #fc8181;
+  --accent:     #a6e22e;  /* green */
+  --accent-lt:  #cdee69;
+  --teal:       #66d9ef;  /* cyan */
+  --pink:       #f92672;  /* magenta */
+  --green:      #a6e22e;
+  --amber:      #e6db74;  /* yellow */
+  --red:        #f92672;
 
   --row-h:      28px;
   --branch-w:   170px;
@@ -335,7 +336,8 @@ body {
   background: var(--accent);
   border: none;
   border-radius: 6px;
-  color: #fff;
+  color: var(--bg-deep);
+  font-weight: 600;
   font-size: 13px;
   font-family: var(--font);
   font-weight: 500;
@@ -506,9 +508,9 @@ body {
   font-size: 10px;
   font-weight: 600;
 }
-.chip.modified { background: rgba(246,195,71,0.15); color: var(--amber); }
-.chip.staged   { background: rgba(104,211,145,0.15); color: var(--green); }
-.chip.untracked { background: rgba(139,144,184,0.15); color: var(--text-sec); }
+.chip.modified { background: rgba(230,219,116,0.15); color: var(--amber); }
+.chip.staged   { background: rgba(166,226,46,0.15); color: var(--green); }
+.chip.untracked { background: rgba(201,201,193,0.13); color: var(--text-sec); }
 
 /* ─── Content Area ──────────────────────────────────────────────────────────── */
 #content-area {
@@ -600,7 +602,7 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   height: var(--row-h);
   cursor: pointer;
   transition: background 0.08s;
-  border-bottom: 1px solid rgba(46,49,85,0.4);
+  border-bottom: 1px solid rgba(59,60,53,0.5);
   user-select: none;
 }
 .commit-row:hover { background: var(--bg-hover); }
@@ -659,10 +661,10 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   white-space: nowrap;
   flex-shrink: 0;
 }
-.ref-head   { background: rgba(124,106,247,0.25); color: var(--accent-lt); border: 1px solid rgba(124,106,247,0.4); }
-.ref-branch { background: rgba(78,205,196,0.15); color: var(--teal); border: 1px solid rgba(78,205,196,0.35); }
-.ref-remote { background: rgba(246,195,71,0.12); color: var(--amber); border: 1px solid rgba(246,195,71,0.3); }
-.ref-tag    { background: rgba(255,107,157,0.15); color: var(--pink); border: 1px solid rgba(255,107,157,0.35); }
+.ref-head   { background: rgba(166,226,46,0.22); color: var(--accent-lt); border: 1px solid rgba(166,226,46,0.45); }
+.ref-branch { background: rgba(102,217,239,0.15); color: var(--teal); border: 1px solid rgba(102,217,239,0.4); }
+.ref-remote { background: rgba(230,219,116,0.13); color: var(--amber); border: 1px solid rgba(230,219,116,0.35); }
+.ref-tag    { background: rgba(249,38,114,0.15); color: var(--pink); border: 1px solid rgba(249,38,114,0.4); }
 
 .commit-author {
   width: var(--author-w);
@@ -795,7 +797,7 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 .loading-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(19,20,31,0.85);
+  background: rgba(30,31,28,0.85);
   display: flex;
   flex-direction: column;
   align-items: center;

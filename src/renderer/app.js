@@ -26,11 +26,11 @@ const COL_W    = 14;   // px per branch lane
 const DOT_R    = 4;    // commit dot radius
 const LANE_PAD = 12;   // left padding before first lane
 
-// Branch lane colours (cycling)
+// Branch lane colours (cycling) — Monokai palette, no purple
 const LANE_COLORS = [
-  '#7c6af7', '#4ecdc4', '#ff6b9d', '#68d391',
-  '#f6c347', '#fc8181', '#90cdf4', '#d6bcfa',
-  '#fbb6ce', '#9ae6b4', '#fed7aa', '#bee3f8',
+  '#a6e22e', '#66d9ef', '#f92672', '#fd971f',
+  '#e6db74', '#a1efe4', '#f45b8f', '#b8e673',
+  '#78dce8', '#ffa94d', '#d1d648', '#7bd88f',
 ];
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
