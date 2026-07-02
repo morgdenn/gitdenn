@@ -156,6 +156,33 @@ ipcMain.handle('git:checkout', async (event, { repoPath, ref }) => {
   }
 });
 
+// Check out a remote branch as a local tracking branch.
+// remoteBranch is the sidebar value, e.g. "remotes/origin/feature/x".
+ipcMain.handle('git:checkoutRemote', async (event, { repoPath, remoteBranch }) => {
+  try {
+    const git = simpleGit(repoPath);
+    const remoteRef = remoteBranch.replace(/^remotes\//, ''); // origin/feature/x
+    const slash = remoteRef.indexOf('/');
+    const localName = slash >= 0 ? remoteRef.slice(slash + 1) : remoteRef; // feature/x
+
+    if (localName === 'HEAD' || remoteRef.endsWith('/HEAD')) {
+      return { success: false, error: 'Cannot check out a symbolic HEAD ref.' };
+    }
+
+    // If the local branch already exists, just switch to it; otherwise create
+    // it tracking the remote ref.
+    const localBranches = await git.branchLocal();
+    if (localBranches.all.includes(localName)) {
+      await git.checkout(localName);
+    } else {
+      await git.checkout(['-b', localName, '--track', remoteRef]);
+    }
+    return { success: true, branch: localName };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Fetch from remote
 ipcMain.handle('git:fetch', async (event, { repoPath }) => {
   try {

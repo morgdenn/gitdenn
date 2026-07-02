@@ -53,6 +53,7 @@ function bindEvents() {
   $('btn-fetch').addEventListener('click', doFetch);
 
   initColumnResizers();
+  initSidebarPanels();
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
@@ -65,6 +66,12 @@ function bindEvents() {
 
   // Commit row selection (delegated — survives every re-render, bound once)
   on(commitRows, 'click', '.commit-row', el => selectCommit(el.dataset.sha, el.dataset.idx));
+
+  // Double-click a remote branch → check it out as a local tracking branch
+  on('remote-branches-list', 'dblclick', '.branch-remote', el => checkoutRemoteBranch(el.dataset.branch));
+
+  // Double-click a local branch → switch to it
+  on('local-branches-list', 'dblclick', '.branch-item', el => checkoutLocalBranch(el.dataset.branch));
 }
 
 // ─── Column Resizing ──────────────────────────────────────────────────────────
@@ -72,11 +79,12 @@ function bindEvents() {
 // variable for that column; the flexible "Commit message" column absorbs the
 // slack. Resizing the Graph column also resizes the canvas and repaints.
 const RESIZABLE_COLS = [
-  { cls: 'col-refs',   varName: '--refs-w',   min: 60 },
+  { cls: 'col-branch', varName: '--branch-w', min: 60 },
   { cls: 'col-graph',  varName: '--graph-w',  min: 80 },
   { cls: 'col-author', varName: '--author-w', min: 60 },
   { cls: 'col-date',   varName: '--date-w',   min: 60 },
   { cls: 'col-sha',    varName: '--sha-w',    min: 50 },
+  { cls: 'col-tag',    varName: '--tag-w',    min: 50 },
 ];
 
 function initColumnResizers() {
@@ -119,6 +127,55 @@ function startColumnResize(e, col) {
       renderCommitRows(state.graphData);
       paintGraph(state.graphData);
     }
+  };
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+// ─── Sidebar Panels (Repos / Branches — collapsible + resizable) ──────────────
+const SIDE_PANELS = [
+  { resize: 'repos',    varName: '--repos-w',    min: 130 },
+  { resize: 'branches', varName: '--branches-w', min: 130 },
+];
+
+function initSidebarPanels() {
+  // Resizers — drag the divider on a panel's right edge to set its width.
+  document.querySelectorAll('.panel-resizer').forEach(rz => {
+    const conf = SIDE_PANELS.find(p => p.resize === rz.dataset.resize);
+    if (conf) rz.addEventListener('mousedown', e => startPanelResize(e, conf));
+  });
+
+  // Collapse / expand — the header button collapses; clicking the collapsed
+  // vertical label expands again.
+  document.querySelectorAll('.side-panel').forEach(panel => {
+    const btn = panel.querySelector('.panel-collapse-btn');
+    if (btn) btn.addEventListener('click', () => panel.classList.add('collapsed'));
+    const label = panel.querySelector('.panel-collapsed-label');
+    if (label) label.addEventListener('click', () => panel.classList.remove('collapsed'));
+  });
+}
+
+function startPanelResize(e, conf) {
+  e.preventDefault();
+  const startX = e.clientX;
+  const rootStyle = document.documentElement.style;
+  const startW = parseInt(
+    getComputedStyle(document.documentElement).getPropertyValue(conf.varName),
+    10
+  );
+
+  document.body.classList.add('col-resizing');
+
+  const onMove = ev => {
+    const width = Math.max(conf.min, startW + (ev.clientX - startX));
+    rootStyle.setProperty(conf.varName, width + 'px');
+  };
+
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.body.classList.remove('col-resizing');
   };
 
   document.addEventListener('mousemove', onMove);
@@ -238,7 +295,7 @@ async function loadRepo(repoPath) {
   // Update toolbar
   const repoName = repoPath.split(/[\\/]/).pop();
   $('repo-name-display').textContent = repoName;
-  $('sidebar-branches').style.display = 'block';
+  $('branches-panel').classList.add('has-repo');
   renderBranches();
   renderStatusChips(result.status);
   addRecentRepo(repoPath);
@@ -260,31 +317,72 @@ function showLoading(text) {
   return el;
 }
 
+// Transient bottom-right notification; auto-dismisses.
+function showToast(message) {
+  const container = $('toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 250);
+  }, 2500);
+}
+
 // ─── Branches Sidebar ─────────────────────────────────────────────────────────
 function renderBranches() {
-  const localList  = $('local-branches-list');
-  const remoteList = $('remote-branches-list');
   const locals  = state.branches.filter(b => !b.startsWith('remotes/'));
   const remotes = state.branches.filter(b => b.startsWith('remotes/'));
 
-  localList.innerHTML = locals.length
-    ? locals.map(b => `
-        <div class="branch-item ${b === state.currentBranch ? 'current' : ''}"
-             data-branch="${escHtml(b)}">
+  render('local-branches-list', locals.length
+    ? locals.map(b => html`
+        <div class="branch-item ${b === state.currentBranch ? 'current' : ''}" data-branch="${b}">
           <span class="branch-dot"></span>
-          ${escHtml(b)}
-        </div>
-      `).join('')
-    : '<div class="empty-sidebar">No local branches</div>';
+          ${b}
+        </div>`)
+    : html`<div class="empty-sidebar">No local branches</div>`);
 
-  remoteList.innerHTML = remotes.length
-    ? remotes.slice(0, 20).map(b => `
-        <div class="branch-item branch-remote" data-branch="${escHtml(b)}">
+  render('remote-branches-list', remotes.length
+    ? remotes.slice(0, 20).map(b => html`
+        <div class="branch-item branch-remote" data-branch="${b}"
+             title="Double-click to check out locally">
           <span class="branch-dot"></span>
-          ${escHtml(b.replace('remotes/', ''))}
-        </div>
-      `).join('')
-    : '<div class="empty-sidebar">No remote branches</div>';
+          ${b.replace('remotes/', '')}
+        </div>`)
+    : html`<div class="empty-sidebar">No remote branches</div>`);
+}
+
+// Double-clicking a remote branch checks it out as a local tracking branch.
+async function checkoutRemoteBranch(remoteBranch) {
+  if (!remoteBranch || !state.repoPath) return;
+  const label = remoteBranch.replace('remotes/', '');
+  const overlay = showLoading(`Checking out ${label}…`);
+  const result = await window.gitApp.checkoutRemote(state.repoPath, remoteBranch);
+  overlay.remove();
+  if (!result.success) {
+    alert(`Checkout failed: ${result.error}`);
+    return;
+  }
+  await loadRepo(state.repoPath); // refresh branches, current branch, and graph
+  showToast(`Checked out ${result.branch}`);
+}
+
+// Double-clicking a local branch switches to it.
+async function checkoutLocalBranch(branch) {
+  if (!branch || !state.repoPath) return;
+  if (branch === state.currentBranch) return; // already on it
+  const overlay = showLoading(`Switching to ${branch}…`);
+  const result = await window.gitApp.checkout(state.repoPath, branch);
+  overlay.remove();
+  if (!result.success) {
+    alert(`Checkout failed: ${result.error}`);
+    return;
+  }
+  await loadRepo(state.repoPath); // refresh branches, current branch, and graph
+  showToast(`Switched to ${branch}`);
 }
 
 function renderStatusChips(status) {
@@ -388,9 +486,11 @@ function renderCommitRows(graphData) {
   render(commitRows, graphData.map((row, i) => {
     const { commit } = row;
     const selected = commit.sha === state.selectedSha ? 'selected' : '';
+    const branchRefs = commit.refs.filter(r => !r.startsWith('tag: '));
+    const tagRefs    = commit.refs.filter(r =>  r.startsWith('tag: '));
     return html`
       <div class="commit-row ${selected}" data-sha="${commit.sha}" data-idx="${i}">
-        <div class="commit-refs">${raw(buildRefBadges(commit.refs))}</div>
+        <div class="commit-branch">${raw(buildRefBadges(branchRefs))}</div>
         <div class="commit-graph-cell"></div>
         <div class="commit-msg">
           <span class="msg-text">${commit.subject}</span>
@@ -398,6 +498,7 @@ function renderCommitRows(graphData) {
         <div class="commit-author">${commit.authorName}</div>
         <div class="commit-date">${relativeDate(commit.timestamp)}</div>
         <div class="commit-sha">${commit.shortSha}</div>
+        <div class="commit-tags">${raw(buildRefBadges(tagRefs))}</div>
       </div>
     `;
   }));

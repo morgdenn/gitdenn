@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('gitApp', {
   log: (repoPath) => ipcRenderer.invoke('git:log', { repoPath }),
   commitDiff: (repoPath, sha) => ipcRenderer.invoke('git:commitDiff', { repoPath, sha }),
   checkout: (repoPath, ref) => ipcRenderer.invoke('git:checkout', { repoPath, ref }),
+  checkoutRemote: (repoPath, remoteBranch) => ipcRenderer.invoke('git:checkoutRemote', { repoPath, remoteBranch }),
   fetch: (repoPath) => ipcRenderer.invoke('git:fetch', { repoPath }),
 
   // Events

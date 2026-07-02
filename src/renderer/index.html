@@ -25,35 +25,59 @@
         </div>
       </div>
 
-      <div id="sidebar-actions">
-        <button class="action-btn" id="btn-clone" title="Clone a repository">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M2 2h8l3 3v9H2V2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
-            <path d="M10 2v3h3" stroke="currentColor" stroke-width="1.2"/>
-            <path d="M8 9v4M6 11l2 2 2-2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Clone
-        </button>
-        <button class="action-btn" id="btn-open" title="Open local repository">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M1 4h6l1.5 1.5H15V13H1V4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
-          </svg>
-          Open
-        </button>
-      </div>
+      <div id="sidebar-panels">
+        <!-- Repos menu -->
+        <section class="side-panel" id="repos-panel">
+          <div class="side-panel-header">
+            <span class="panel-title">Repos</span>
+            <button class="panel-collapse-btn" title="Collapse">‹</button>
+          </div>
+          <div class="side-panel-body">
+            <div id="sidebar-actions">
+              <button class="action-btn" id="btn-clone" title="Clone a repository">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M2 2h8l3 3v9H2V2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+                  <path d="M10 2v3h3" stroke="currentColor" stroke-width="1.2"/>
+                  <path d="M8 9v4M6 11l2 2 2-2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Clone
+              </button>
+              <button class="action-btn" id="btn-open" title="Open local repository">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M1 4h6l1.5 1.5H15V13H1V4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+                </svg>
+                Open
+              </button>
+            </div>
+            <div class="sidebar-section-header">Recent Repos</div>
+            <div id="recent-repos-list">
+              <div class="empty-sidebar">No repos yet</div>
+            </div>
+          </div>
+          <div class="panel-collapsed-label">Repos</div>
+        </section>
 
-      <div id="sidebar-repos">
-        <div class="sidebar-section-header">Recent Repos</div>
-        <div id="recent-repos-list">
-          <div class="empty-sidebar">No repos yet</div>
-        </div>
-      </div>
+        <div class="panel-resizer" data-resize="repos" title="Drag to resize"></div>
 
-      <div id="sidebar-branches" style="display:none;">
-        <div class="sidebar-section-header">Local</div>
-        <div id="local-branches-list"></div>
-        <div class="sidebar-section-header">Remote</div>
-        <div id="remote-branches-list"></div>
+        <!-- Branches menu -->
+        <section class="side-panel" id="branches-panel">
+          <div class="side-panel-header">
+            <span class="panel-title">Branches</span>
+            <button class="panel-collapse-btn" title="Collapse">‹</button>
+          </div>
+          <div class="side-panel-body">
+            <div id="branches-empty" class="empty-sidebar">No repository open</div>
+            <div id="branches-sections">
+              <div class="sidebar-section-header">Local</div>
+              <div id="local-branches-list"></div>
+              <div class="sidebar-section-header">Remote</div>
+              <div id="remote-branches-list"></div>
+            </div>
+          </div>
+          <div class="panel-collapsed-label">Branches</div>
+        </section>
+
+        <div class="panel-resizer" data-resize="branches" title="Drag to resize"></div>
       </div>
     </aside>
 
@@ -130,12 +154,13 @@
           <!-- Graph panel -->
           <div id="graph-panel">
             <div id="graph-header">
-              <span class="col-refs">Branch / Tag</span>
+              <span class="col-branch">Branch</span>
               <span class="col-graph">Graph</span>
               <span class="col-msg">Commit message</span>
               <span class="col-author">Author</span>
               <span class="col-date">Date</span>
               <span class="col-sha">SHA</span>
+              <span class="col-tag">Tag</span>
             </div>
             <div id="graph-scroll">
               <canvas id="graph-canvas"></canvas>
@@ -173,6 +198,8 @@
       </div>
     </main>
   </div>
+
+  <div id="toast-container"></div>
 
   <script src="ui.js"></script>
   <script src="app.js"></script>
