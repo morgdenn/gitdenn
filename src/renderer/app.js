@@ -540,7 +540,7 @@ function renderCommitRows(graphData) {
     const tagRefs    = commit.refs.filter(r =>  r.startsWith('tag: '));
     return html`
       <div class="commit-row ${selected}" data-sha="${commit.sha}" data-idx="${i}">
-        <div class="commit-branch">${raw(buildRefBadges(branchRefs, laneColor(row.lane)))}</div>
+        <div class="commit-branch">${raw(buildRefBadges(branchRefs, laneColor(row.lane), remoteNames))}</div>
         <div class="commit-graph-cell"></div>
         <div class="commit-msg">
           <span class="msg-text">${commit.subject}</span>
@@ -590,16 +590,24 @@ function filterSyncedRemotes(refs, remoteNames) {
 }
 
 // When `color` is given (a commit's graph lane colour), branch-type badges are
-// tinted to match the graph; tag badges keep their own colour.
-function buildRefBadges(refs, color) {
+// tinted to match the graph; tag badges keep their own colour. Remote badges
+// have their "<remote>/" prefix stripped for display, and the symbolic
+// "<remote>/HEAD" ref is omitted entirely.
+function buildRefBadges(refs, color, remoteNames) {
   const style = color
     ? ` style="color:${color};border-color:${color};background:color-mix(in srgb, ${color} 16%, transparent)"`
     : '';
+  const remotes = remoteNames || new Set();
   return refs.map(ref => {
     if (ref === 'HEAD') return `<span class="ref-badge ref-head"${style}>HEAD</span>`;
     if (ref.startsWith('HEAD -> ')) return `<span class="ref-badge ref-head"${style}>${escHtml(ref.replace('HEAD -> ', ''))}</span>`;
     if (ref.startsWith('tag: '))  return `<span class="ref-badge ref-tag">${escHtml(ref.replace('tag: ', ''))}</span>`;
-    if (ref.includes('/'))        return `<span class="ref-badge ref-remote"${style}>${escHtml(ref)}</span>`;
+    const remote = ref.split('/')[0];
+    if (remotes.has(remote)) {
+      const name = ref.slice(remote.length + 1); // strip "origin/"
+      if (name === 'HEAD' || name === '') return ''; // skip "origin/HEAD"
+      return `<span class="ref-badge ref-remote"${style}>${escHtml(name)}</span>`;
+    }
     return `<span class="ref-badge ref-branch"${style}>${escHtml(ref)}</span>`;
   }).join('');
 }
