@@ -32,6 +32,7 @@ const LANE_COLORS = [
   '#e6db74', '#a1efe4', '#f45b8f', '#b8e673',
   '#78dce8', '#ffa94d', '#d1d648', '#7bd88f',
 ];
+const laneColor = lane => LANE_COLORS[lane % LANE_COLORS.length];
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
@@ -535,7 +536,7 @@ function renderCommitRows(graphData) {
     const tagRefs    = commit.refs.filter(r =>  r.startsWith('tag: '));
     return html`
       <div class="commit-row ${selected}" data-sha="${commit.sha}" data-idx="${i}">
-        <div class="commit-branch">${raw(buildRefBadges(branchRefs))}</div>
+        <div class="commit-branch">${raw(buildRefBadges(branchRefs, laneColor(row.lane)))}</div>
         <div class="commit-graph-cell"></div>
         <div class="commit-msg">
           <span class="msg-text">${commit.subject}</span>
@@ -549,13 +550,18 @@ function renderCommitRows(graphData) {
   }));
 }
 
-function buildRefBadges(refs) {
+// When `color` is given (a commit's graph lane colour), branch-type badges are
+// tinted to match the graph; tag badges keep their own colour.
+function buildRefBadges(refs, color) {
+  const style = color
+    ? ` style="color:${color};border-color:${color};background:color-mix(in srgb, ${color} 16%, transparent)"`
+    : '';
   return refs.map(ref => {
-    if (ref === 'HEAD') return `<span class="ref-badge ref-head">HEAD</span>`;
-    if (ref.startsWith('HEAD -> ')) return `<span class="ref-badge ref-head">${escHtml(ref.replace('HEAD -> ', ''))}</span>`;
+    if (ref === 'HEAD') return `<span class="ref-badge ref-head"${style}>HEAD</span>`;
+    if (ref.startsWith('HEAD -> ')) return `<span class="ref-badge ref-head"${style}>${escHtml(ref.replace('HEAD -> ', ''))}</span>`;
     if (ref.startsWith('tag: '))  return `<span class="ref-badge ref-tag">${escHtml(ref.replace('tag: ', ''))}</span>`;
-    if (ref.includes('/'))        return `<span class="ref-badge ref-remote">${escHtml(ref)}</span>`;
-    return `<span class="ref-badge ref-branch">${escHtml(ref)}</span>`;
+    if (ref.includes('/'))        return `<span class="ref-badge ref-remote"${style}>${escHtml(ref)}</span>`;
+    return `<span class="ref-badge ref-branch"${style}>${escHtml(ref)}</span>`;
   }).join('');
 }
 
