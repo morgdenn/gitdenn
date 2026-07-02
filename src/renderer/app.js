@@ -337,22 +337,67 @@ function renderBranches() {
   const locals  = state.branches.filter(b => !b.startsWith('remotes/'));
   const remotes = state.branches.filter(b => b.startsWith('remotes/'));
 
+  // Each tree item: `path` is split on "/" to form the hierarchy; `value` is
+  // the full identifier kept on the leaf for checkout (data-branch).
+  const localItems  = locals.map(b => ({
+    path: b, value: b, current: b === state.currentBranch,
+  }));
+  const remoteItems = remotes.slice(0, 20).map(b => ({
+    path: b.replace('remotes/', ''), value: b, current: false,
+  }));
+
   render('local-branches-list', locals.length
-    ? locals.map(b => html`
-        <div class="branch-item ${b === state.currentBranch ? 'current' : ''}" data-branch="${b}">
-          <span class="branch-dot"></span>
-          ${b}
-        </div>`)
+    ? renderBranchTree(buildBranchTree(localItems), { remote: false })
     : html`<div class="empty-sidebar">No local branches</div>`);
 
   render('remote-branches-list', remotes.length
-    ? remotes.slice(0, 20).map(b => html`
-        <div class="branch-item branch-remote" data-branch="${b}"
-             title="Double-click to check out locally">
-          <span class="branch-dot"></span>
-          ${b.replace('remotes/', '')}
-        </div>`)
+    ? renderBranchTree(buildBranchTree(remoteItems), { remote: true })
     : html`<div class="empty-sidebar">No remote branches</div>`);
+}
+
+// Build a nested tree from branch items, splitting each `path` on "/".
+// A node is either a folder (has children) or a leaf (has `.leaf`), never both
+// — git forbids a branch and a branch-folder sharing a name.
+function buildBranchTree(items) {
+  const root = { children: {} };
+  for (const item of items) {
+    const parts = item.path.split('/');
+    let node = root;
+    parts.forEach((part, i) => {
+      if (!node.children[part]) node.children[part] = { label: part, children: {} };
+      node = node.children[part];
+      if (i === parts.length - 1) node.leaf = item;
+    });
+  }
+  return root;
+}
+
+// Render a tree node's children as an array of html templates (folders first,
+// then leaves, each alphabetical). Folders use <details> for native collapse.
+function renderBranchTree(node, opts) {
+  const entries = Object.values(node.children).sort((a, b) => {
+    const aLeaf = !!a.leaf, bLeaf = !!b.leaf;
+    if (aLeaf !== bLeaf) return aLeaf ? 1 : -1;
+    return a.label.localeCompare(b.label);
+  });
+
+  return entries.map(child => {
+    if (child.leaf) {
+      const it = child.leaf;
+      const cls = `branch-item${opts.remote ? ' branch-remote' : ''}${it.current ? ' current' : ''}`;
+      const title = opts.remote ? raw(' title="Double-click to check out locally"') : '';
+      return html`
+        <div class="${cls}" data-branch="${it.value}"${title}>
+          <span class="branch-dot"></span>
+          ${child.label}
+        </div>`;
+    }
+    return html`
+      <details class="branch-folder" open>
+        <summary class="branch-folder-label">${child.label}</summary>
+        <div class="branch-tree-children">${renderBranchTree(child, opts)}</div>
+      </details>`;
+  });
 }
 
 // Double-clicking a remote branch checks it out as a local tracking branch.
