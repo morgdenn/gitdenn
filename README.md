@@ -39,13 +39,17 @@ npm run dev
 ```
 gitdenn/
 ├── package.json
+├── AGENTS.md              # Guide for AI assistants working on this repo
+├── CLAUDE.md              # Pointer to AGENTS.md for Claude Code
 ├── src/
 │   ├── main/
 │   │   ├── main.js        # Electron main process — window, IPC, git ops
-│   │   └── preload.js     # Context bridge — exposes gitApp API to renderer
+│   │   ├── preload.js     # Context bridge — exposes gitApp API to renderer
+│   │   └── dev-reload.js  # Dev-only hot reload (active with --dev)
 │   └── renderer/
 │       ├── index.html     # App shell
 │       ├── app.js         # UI logic + graph layout + canvas painter
+│       ├── ui.js          # Tiny buildless UI helper (html/raw/render/on)
 │       └── styles/
 │           └── app.css    # Dark theme styles
 └── public/
