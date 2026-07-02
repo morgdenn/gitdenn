@@ -529,10 +529,14 @@ function renderCommitRows(graphData) {
   graphCanvas.style.width  = graphCanvas.width + 'px';
   graphCanvas.style.height = graphCanvas.height + 'px';
 
+  const remoteNames = getRemoteNames();
   render(commitRows, graphData.map((row, i) => {
     const { commit } = row;
     const selected = commit.sha === state.selectedSha ? 'selected' : '';
-    const branchRefs = commit.refs.filter(r => !r.startsWith('tag: '));
+    const branchRefs = filterSyncedRemotes(
+      commit.refs.filter(r => !r.startsWith('tag: ')),
+      remoteNames
+    );
     const tagRefs    = commit.refs.filter(r =>  r.startsWith('tag: '));
     return html`
       <div class="commit-row ${selected}" data-sha="${commit.sha}" data-idx="${i}">
@@ -548,6 +552,41 @@ function renderCommitRows(graphData) {
       </div>
     `;
   }));
+}
+
+// The set of remote names in the repo (e.g. "origin"), derived from the
+// "remotes/<name>/..." entries in the branch list.
+function getRemoteNames() {
+  const names = new Set();
+  state.branches.forEach(b => {
+    if (b.startsWith('remotes/')) {
+      const remote = b.slice('remotes/'.length).split('/')[0];
+      if (remote) names.add(remote);
+    }
+  });
+  return names;
+}
+
+// Drop a remote ref (e.g. "origin/staging") when a local branch of the same
+// name decorates the SAME commit — i.e. they're in sync, so show only the
+// local. Refs on a commit share its SHA, so co-location means in-sync.
+function filterSyncedRemotes(refs, remoteNames) {
+  const localNames = new Set();
+  refs.forEach(ref => {
+    if (ref === 'HEAD') return;
+    if (ref.startsWith('HEAD -> ')) { localNames.add(ref.slice(8)); return; }
+    if (!remoteNames.has(ref.split('/')[0])) localNames.add(ref); // local branch
+  });
+
+  return refs.filter(ref => {
+    if (ref === 'HEAD' || ref.startsWith('HEAD -> ')) return true;
+    const remote = ref.split('/')[0];
+    if (remoteNames.has(remote)) {
+      const branchName = ref.slice(remote.length + 1); // strip "origin/"
+      if (localNames.has(branchName)) return false; // in sync → hide remote
+    }
+    return true;
+  });
 }
 
 // When `color` is given (a commit's graph lane colour), branch-type badges are
