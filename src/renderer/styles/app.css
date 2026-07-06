@@ -623,9 +623,7 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   transition: background 0.08s;
   border-bottom: 1px solid rgba(59,60,53,0.5);
   user-select: none;
-  background: var(--lane-tint, transparent);
 }
-.commit-row:hover { background: var(--bg-hover); }
 .commit-row.selected { background: var(--bg-sel); }
 
 .commit-branch {
@@ -657,6 +655,10 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   height: var(--row-h);
   flex-shrink: 0;
   position: relative;
+  /* Lane tint, only to the right of this commit's graph line */
+  background: linear-gradient(to right,
+    transparent var(--line-x, 0),
+    var(--lane-tint, transparent) var(--line-x, 0));
 }
 
 .commit-msg {

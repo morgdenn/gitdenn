@@ -604,7 +604,9 @@ function renderCommitRows(graphData) {
       remoteNames
     );
     const tagRefs    = commit.refs.filter(r =>  r.startsWith('tag: '));
-    const tint = raw(` style="--lane-tint: color-mix(in srgb, ${laneColor(row.lane)} 8%, transparent)"`);
+    // Tint the graph cell to the right of this commit's graph line only.
+    const lineX = LANE_PAD + row.lane * COL_W + COL_W / 2;
+    const tint = raw(` style="--lane-tint: color-mix(in srgb, ${laneColor(row.lane)} 12%, transparent); --line-x: ${lineX}px"`);
     return html`
       <div class="commit-row ${selected}" data-sha="${commit.sha}" data-idx="${i}"${tint}>
         <div class="commit-branch">${raw(buildRefBadges(branchRefs, laneColor(row.lane), remoteNames))}</div>
