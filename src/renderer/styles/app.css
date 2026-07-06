@@ -581,6 +581,7 @@ body.row-resizing { cursor: row-resize; user-select: none; }
   cursor: col-resize;
   z-index: 5;
 }
+.col-resizer.left { left: -3px; right: auto; }
 .col-resizer::after {
   content: '';
   position: absolute;
