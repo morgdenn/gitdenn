@@ -432,6 +432,7 @@ body.row-resizing { cursor: row-resize; user-select: none; }
   transition: border-color 0.15s;
 }
 .modal-body input[type="text"]:focus { border-color: var(--accent); }
+.modal-note { margin-top: 10px; font-size: 11px; color: var(--text-muted); }
 
 .path-row { display: flex; gap: 8px; }
 .path-row input { flex: 1; }

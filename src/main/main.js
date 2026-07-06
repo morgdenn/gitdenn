@@ -183,6 +183,17 @@ ipcMain.handle('git:checkoutRemote', async (event, { repoPath, remoteBranch }) =
   }
 });
 
+// Create a new local branch off the current HEAD and switch to it
+ipcMain.handle('git:createBranch', async (event, { repoPath, name }) => {
+  try {
+    const git = simpleGit(repoPath);
+    await git.checkoutLocalBranch(name); // git checkout -b <name>
+    return { success: true, branch: name };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Fetch from remote
 ipcMain.handle('git:fetch', async (event, { repoPath }) => {
   try {

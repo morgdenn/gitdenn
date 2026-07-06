@@ -12,6 +12,7 @@ const state = {
 const $ = id => document.getElementById(id);
 const welcomeScreen   = $('welcome-screen');
 const cloneModal      = $('clone-modal');
+const branchModal     = $('branch-modal');
 const repoView        = $('repo-view');
 const commitRows      = $('commit-rows');
 const graphCanvas     = $('graph-canvas');
@@ -71,13 +72,21 @@ function bindEvents() {
 
   $('btn-fetch').addEventListener('click', doFetch);
 
+  $('btn-branch').addEventListener('click', showBranchModal);
+  $('branch-cancel').addEventListener('click', hideBranchModal);
+  $('branch-cancel-2').addEventListener('click', hideBranchModal);
+  $('branch-confirm').addEventListener('click', doCreateBranch);
+  $('branch-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doCreateBranch();
+  });
+
   initColumnResizers();
   initSidebarPanels();
   initBranchSplit();
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') hideCloneModal();
+    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); }
     if ((e.metaKey || e.ctrlKey) && e.key === 'r') loadRepo(state.repoPath);
   });
 
@@ -271,6 +280,38 @@ function hideCloneModal() {
   cloneModal.style.display = 'none';
   $('clone-url').value = '';
   $('clone-dest').value = '';
+}
+
+function showBranchModal() {
+  if (!state.repoPath) return;
+  branchModal.style.display = 'flex';
+  const base = state.currentBranch || 'current commit';
+  $('branch-base-note').textContent = `Based on ${base}`;
+  const input = $('branch-name');
+  input.value = '';
+  input.focus();
+}
+function hideBranchModal() {
+  branchModal.style.display = 'none';
+  $('branch-name').value = '';
+}
+
+async function doCreateBranch() {
+  const name = $('branch-name').value.trim();
+  if (!name) return alert('Please enter a branch name.');
+  if (/\s/.test(name)) return alert('Branch names cannot contain spaces.');
+
+  const btn = $('branch-confirm');
+  btn.disabled = true;
+  const result = await window.gitApp.createBranch(state.repoPath, name);
+  btn.disabled = false;
+  if (!result.success) {
+    alert(`Create branch failed: ${result.error}`);
+    return;
+  }
+  hideBranchModal();
+  await loadRepo(state.repoPath); // refresh branches, current branch, and graph
+  showToast(`Created branch ${result.branch}`);
 }
 
 async function browseDestination() {
