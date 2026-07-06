@@ -375,6 +375,24 @@ function buildBranchTree(items) {
 
 // Render a tree node's children as an array of html templates (folders first,
 // then leaves, each alphabetical). Folders use <details> for native collapse.
+// Original SVG glyphs (git-branch, folder, checked-out check) in the style of
+// desktop git clients. `currentColor` lets branch/folder icons inherit the row
+// text colour; the current-branch check uses the theme green.
+const ICON_BRANCH = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true">
+  <circle cx="4.5" cy="3.5" r="1.6" stroke="currentColor" stroke-width="1.3"/>
+  <circle cx="4.5" cy="12.5" r="1.6" stroke="currentColor" stroke-width="1.3"/>
+  <circle cx="11.5" cy="3.5" r="1.6" stroke="currentColor" stroke-width="1.3"/>
+  <path d="M4.5 5.1v5.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+  <path d="M11.5 5.1V6a3 3 0 0 1-3 3H4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+</svg>`;
+const ICON_FOLDER = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true">
+  <path d="M1.5 4a1 1 0 0 1 1-1h3.1l1.3 1.6h6.6a1 1 0 0 1 1 1v6.4a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+</svg>`;
+const ICON_CHECK = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+  <rect x="1.5" y="1.5" width="13" height="13" rx="3.5" style="fill:var(--green)"/>
+  <path d="M4.6 8.2l2.1 2.2 4.7-4.9" fill="none" style="stroke:var(--bg-deep)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
 function renderBranchTree(node, opts) {
   const entries = Object.values(node.children).sort((a, b) => {
     const aLeaf = !!a.leaf, bLeaf = !!b.leaf;
@@ -389,13 +407,13 @@ function renderBranchTree(node, opts) {
       const title = opts.remote ? raw(' title="Double-click to check out locally"') : '';
       return html`
         <div class="${cls}" data-branch="${it.value}"${title}>
-          <span class="branch-dot"></span>
+          ${raw(it.current ? ICON_CHECK : ICON_BRANCH)}
           ${child.label}
         </div>`;
     }
     return html`
       <details class="branch-folder" open>
-        <summary class="branch-folder-label">${child.label}</summary>
+        <summary class="branch-folder-label">${raw(ICON_FOLDER)}${child.label}</summary>
         <div class="branch-tree-children">${renderBranchTree(child, opts)}</div>
       </details>`;
   });

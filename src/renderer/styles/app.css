@@ -261,16 +261,14 @@ body {
   gap: 6px;
 }
 .branch-item:hover { background: var(--bg-hover); color: var(--text-pri); }
-.branch-item.current { color: var(--teal); }
-.branch-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--text-dim);
-  flex-shrink: 0;
-}
-.branch-item.current .branch-dot { background: var(--teal); }
-.branch-remote .branch-dot { background: var(--amber); }
+.branch-item.current { color: var(--text-pri); font-weight: 600; }
 .branch-remote { color: var(--text-muted); }
+
+/* Tree glyphs (branch / folder / checked-out) */
+.tree-icon { flex-shrink: 0; }
+.branch-item .tree-icon { color: var(--text-sec); }
+.branch-item.current .tree-icon { color: var(--green); }
+.branch-remote .tree-icon { color: var(--amber); }
 
 /* Branch tree (grouped by "/" — folders use native <details>) */
 .branch-folder-label {
@@ -289,14 +287,7 @@ body {
 }
 .branch-folder-label::-webkit-details-marker { display: none; }
 .branch-folder-label:hover { background: var(--bg-hover); color: var(--text-sec); }
-.branch-folder-label::before {
-  content: '▸';
-  font-size: 9px;
-  color: var(--text-dim);
-  transition: transform 0.1s;
-  flex-shrink: 0;
-}
-.branch-folder[open] > .branch-folder-label::before { transform: rotate(90deg); }
+.branch-folder-label .tree-icon { color: var(--amber); }
 
 /* Nested indentation — accumulates one step per level via DOM nesting */
 .branch-tree-children { padding-left: 12px; }
