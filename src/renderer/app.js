@@ -55,6 +55,7 @@ function bindEvents() {
 
   initColumnResizers();
   initSidebarPanels();
+  initBranchSplit();
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
@@ -181,6 +182,35 @@ function startPanelResize(e, conf) {
 
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', onUp);
+}
+
+// Draggable divider between the Local and Remote branch lists — sets the Local
+// group's height; Remote fills the remaining space. Each list scrolls on its own.
+function initBranchSplit() {
+  const divider = $('branch-split');
+  if (!divider) return;
+  divider.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const rootStyle = document.documentElement.style;
+    const startY = e.clientY;
+    const startH = $('local-group').getBoundingClientRect().height;
+    const total  = $('branches-sections').getBoundingClientRect().height;
+    const MIN = 48; // keep both groups usable
+
+    document.body.classList.add('row-resizing');
+
+    const onMove = ev => {
+      const h = Math.max(MIN, Math.min(startH + (ev.clientY - startY), total - MIN));
+      rootStyle.setProperty('--local-branches-h', h + 'px');
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.classList.remove('row-resizing');
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
 }
 
 // ─── Recent Repos ─────────────────────────────────────────────────────────────

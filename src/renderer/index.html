@@ -68,10 +68,15 @@
           <div class="side-panel-body">
             <div id="branches-empty" class="empty-sidebar">No repository open</div>
             <div id="branches-sections">
-              <div class="sidebar-section-header">Local</div>
-              <div id="local-branches-list"></div>
-              <div class="sidebar-section-header">Remote</div>
-              <div id="remote-branches-list"></div>
+              <div class="branch-group" id="local-group">
+                <div class="sidebar-section-header">Local</div>
+                <div id="local-branches-list" class="branch-list-scroll"></div>
+              </div>
+              <div class="branch-split-resizer" id="branch-split" title="Drag to resize"></div>
+              <div class="branch-group" id="remote-group">
+                <div class="sidebar-section-header">Remote</div>
+                <div id="remote-branches-list" class="branch-list-scroll"></div>
+              </div>
             </div>
           </div>
           <div class="panel-collapsed-label">Branches</div>

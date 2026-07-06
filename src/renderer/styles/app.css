@@ -36,6 +36,7 @@
   --sidebar-w:  220px;
   --repos-w:    210px;
   --branches-w: 200px;
+  --local-branches-h: 200px;
   --toolbar-h:  44px;
   --header-h:   32px;
 
@@ -162,9 +163,36 @@ body {
 #branches-panel.collapsed + .panel-resizer { display: none; }
 
 /* Branches panel: empty state vs. loaded sections */
-#branches-sections { display: none; }
-#branches-panel.has-repo #branches-sections { display: block; }
+#branches-sections {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+#branches-panel.has-repo #branches-sections { display: flex; }
 #branches-panel.has-repo #branches-empty { display: none; }
+
+/* Local / Remote split — Local has a draggable height, Remote fills the rest */
+.branch-group {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+#local-group  { height: var(--local-branches-h); flex-shrink: 0; }
+#remote-group { flex: 1; }
+.branch-list-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+
+.branch-split-resizer {
+  height: 5px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  background: transparent;
+  border-top: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.branch-split-resizer:hover { background: var(--accent); }
+body.row-resizing { cursor: row-resize; user-select: none; }
 
 #sidebar-header {
   height: 50px;
