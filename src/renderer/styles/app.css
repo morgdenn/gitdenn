@@ -684,6 +684,12 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   white-space: nowrap;
   flex-shrink: 0;
 }
+/* Long branch names in the Branch column truncate; full name shown via title */
+.commit-branch .ref-badge {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .ref-head   { background: rgba(166,226,46,0.22); color: var(--accent-lt); border: 1px solid rgba(166,226,46,0.45); }
 .ref-branch { background: rgba(102,217,239,0.15); color: var(--teal); border: 1px solid rgba(102,217,239,0.4); }
 .ref-remote { background: rgba(230,219,116,0.13); color: var(--amber); border: 1px solid rgba(230,219,116,0.35); }

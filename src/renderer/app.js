@@ -709,16 +709,24 @@ function buildRefBadges(refs, color, remoteNames) {
     : '';
   const remotes = remoteNames || new Set();
   return refs.map(ref => {
-    if (ref === 'HEAD') return `<span class="ref-badge ref-head"${style}>HEAD</span>`;
-    if (ref.startsWith('HEAD -> ')) return `<span class="ref-badge ref-head"${style}>${escHtml(ref.replace('HEAD -> ', ''))}</span>`;
-    if (ref.startsWith('tag: '))  return `<span class="ref-badge ref-tag">${escHtml(ref.replace('tag: ', ''))}</span>`;
-    const remote = ref.split('/')[0];
-    if (remotes.has(remote)) {
-      const name = ref.slice(remote.length + 1); // strip "origin/"
-      if (name === 'HEAD' || name === '') return ''; // skip "origin/HEAD"
-      return `<span class="ref-badge ref-remote"${style}>${escHtml(name)}</span>`;
+    let cls, label;
+    if (ref === 'HEAD') { cls = 'ref-head'; label = 'HEAD'; }
+    else if (ref.startsWith('HEAD -> ')) { cls = 'ref-head'; label = ref.slice(8); }
+    else if (ref.startsWith('tag: ')) { cls = 'ref-tag'; label = ref.slice(5); }
+    else {
+      const remote = ref.split('/')[0];
+      if (remotes.has(remote)) {
+        label = ref.slice(remote.length + 1); // strip "origin/"
+        if (label === 'HEAD' || label === '') return ''; // skip "origin/HEAD"
+        cls = 'ref-remote';
+      } else {
+        cls = 'ref-branch'; label = ref;
+      }
     }
-    return `<span class="ref-badge ref-branch"${style}>${escHtml(ref)}</span>`;
+    const st = cls === 'ref-tag' ? '' : style; // tags keep their own colour
+    const safe = escHtml(label);
+    // title shows the full name on hover (badge text may be ellipsised in CSS)
+    return `<span class="ref-badge ${cls}"${st} title="${safe}">${safe}</span>`;
   }).join('');
 }
 
