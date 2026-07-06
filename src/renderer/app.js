@@ -567,7 +567,7 @@ function computeGraphLayout(commits) {
         }
         openLanes.set(parentSha, parentLane);
       }
-      connections.push({ fromLane: lane, toLane: parentLane, parentSha });
+      connections.push({ fromLane: lane, toLane: parentLane, parentSha, first: pi === 0 });
     });
 
     // If no parents (root commit), free the lane
@@ -711,11 +711,12 @@ function paintGraph(graphData) {
   const shaToIndex = new Map();
   for (let i = 0; i < graphData.length; i++) shaToIndex.set(graphData[i].commit.sha, i);
 
-  // Draw edges
+  // Draw edges — orthogonal (right-angle) routing with rounded corners.
   ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   for (let i = firstRow; i <= lastRow; i++) {
     const row = graphData[i];
-    row.connections.forEach(({ fromLane, toLane, parentSha }) => {
+    row.connections.forEach(({ fromLane, toLane, parentSha, first }) => {
       const parentRow = shaToIndex.has(parentSha) ? shaToIndex.get(parentSha) : -1;
       if (parentRow < 0) return;
 
@@ -725,16 +726,25 @@ function paintGraph(graphData) {
       const y2 = rowY(parentRow);
 
       ctx.beginPath();
-      ctx.strokeStyle = color(fromLane);
+      // Colour the line after the lane it mostly runs in.
+      ctx.strokeStyle = color(first ? fromLane : toLane);
       ctx.lineWidth = 2;
       ctx.moveTo(x1, y1);
 
-      if (fromLane === toLane) {
+      if (x1 === x2) {
         ctx.lineTo(x2, y2);
       } else {
-        // Bezier curve for branch/merge lines
-        const midY = (y1 + y2) / 2;
-        ctx.bezierCurveTo(x1, midY, x2, midY, x2, y2);
+        const r = Math.min(7, Math.abs(x2 - x1), Math.abs(y2 - y1) / 2);
+        if (first) {
+          // Branch base / convergence: descend in the child's lane, then turn
+          // into the parent's lane at the bottom (near the parent).
+          ctx.arcTo(x1, y2, x2, y2, r);
+        } else {
+          // Merge: turn out of the child's lane at the top, then descend in the
+          // parent's lane down to the parent.
+          ctx.arcTo(x2, y1, x2, y2, r);
+        }
+        ctx.lineTo(x2, y2);
       }
       ctx.stroke();
     });
