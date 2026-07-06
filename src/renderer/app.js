@@ -22,9 +22,10 @@ const graphScroll     = $('graph-scroll');
 // ─── Graph layout constants ───────────────────────────────────────────────────
 const ROW_H    = 28;
 let   GRAPH_W  = 220;
-const COL_W    = 14;   // px per branch lane
-const DOT_R    = 4;    // commit dot radius
-const LANE_PAD = 12;   // left padding before first lane
+const COL_W    = 22;   // px per branch lane (wide enough for avatar nodes)
+const NODE_R   = 9;    // commit avatar radius
+const LANE_PAD = 14;   // left padding before first lane
+const NODE_FONT = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
 
 // Branch lane colours (cycling) — Monokai palette, no purple
 const LANE_COLORS = [
@@ -33,6 +34,23 @@ const LANE_COLORS = [
   '#78dce8', '#ffa94d', '#d1d648', '#7bd88f',
 ];
 const laneColor = lane => LANE_COLORS[lane % LANE_COLORS.length];
+
+// Author initials for avatar nodes: "Ian Anderson" → "IA", "Kevin" → "K".
+function authorInitials(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return parts[0][0].toUpperCase();
+}
+
+// Pick a readable text colour (dark or light) for a filled node of hex colour.
+function textOn(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.6 ? '#1e1f1c' : '#f8f8f2';
+}
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
@@ -586,8 +604,9 @@ function renderCommitRows(graphData) {
       remoteNames
     );
     const tagRefs    = commit.refs.filter(r =>  r.startsWith('tag: '));
+    const tint = raw(` style="--lane-tint: color-mix(in srgb, ${laneColor(row.lane)} 8%, transparent)"`);
     return html`
-      <div class="commit-row ${selected}" data-sha="${commit.sha}" data-idx="${i}">
+      <div class="commit-row ${selected}" data-sha="${commit.sha}" data-idx="${i}"${tint}>
         <div class="commit-branch">${raw(buildRefBadges(branchRefs, laneColor(row.lane), remoteNames))}</div>
         <div class="commit-graph-cell"></div>
         <div class="commit-msg">
@@ -688,11 +707,16 @@ function paintGraph(graphData) {
   const rowY  = idx  => idx * ROW_H + ROW_H / 2;
   const color = lane => LANE_COLORS[lane % LANE_COLORS.length];
 
+  // Map sha → row index for O(1) parent lookups
+  const shaToIndex = new Map();
+  for (let i = 0; i < graphData.length; i++) shaToIndex.set(graphData[i].commit.sha, i);
+
   // Draw edges
+  ctx.lineCap = 'round';
   for (let i = firstRow; i <= lastRow; i++) {
     const row = graphData[i];
     row.connections.forEach(({ fromLane, toLane, parentSha }) => {
-      const parentRow = graphData.findIndex(r => r.commit.sha === parentSha);
+      const parentRow = shaToIndex.has(parentSha) ? shaToIndex.get(parentSha) : -1;
       if (parentRow < 0) return;
 
       const x1 = laneX(fromLane);
@@ -702,7 +726,7 @@ function paintGraph(graphData) {
 
       ctx.beginPath();
       ctx.strokeStyle = color(fromLane);
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2;
       ctx.moveTo(x1, y1);
 
       if (fromLane === toLane) {
@@ -716,35 +740,43 @@ function paintGraph(graphData) {
     });
   }
 
-  // Draw commit dots
+  // Draw commit nodes as author-initial avatars
+  ctx.font = NODE_FONT;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   for (let i = firstRow; i <= lastRow; i++) {
     const row = graphData[i];
     const x = laneX(row.lane);
     const y = rowY(i);
     const c = color(row.lane);
 
-    // Outer glow ring for merge commits
-    if (row.commit.parents.length > 1) {
-      ctx.beginPath();
-      ctx.arc(x, y, DOT_R + 3, 0, Math.PI * 2);
-      ctx.strokeStyle = c + '55';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-
-    // Dot
+    // Filled avatar circle
     ctx.beginPath();
-    ctx.arc(x, y, DOT_R, 0, Math.PI * 2);
+    ctx.arc(x, y, NODE_R, 0, Math.PI * 2);
     ctx.fillStyle = c;
     ctx.fill();
 
-    // White inner for selected
+    // Merge commits: subtle dark inner ring
+    if (row.commit.parents.length > 1) {
+      ctx.beginPath();
+      ctx.arc(x, y, NODE_R, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(30,31,28,0.55)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Selection ring
     if (row.commit.sha === state.selectedSha) {
       ctx.beginPath();
-      ctx.arc(x, y, DOT_R - 1.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#fff';
-      ctx.fill();
+      ctx.arc(x, y, NODE_R + 2.5, 0, Math.PI * 2);
+      ctx.strokeStyle = '#f8f8f2';
+      ctx.lineWidth = 2;
+      ctx.stroke();
     }
+
+    // Author initials
+    ctx.fillStyle = textOn(c);
+    ctx.fillText(authorInitials(row.commit.authorName), x, y + 0.5);
   }
 }
 
