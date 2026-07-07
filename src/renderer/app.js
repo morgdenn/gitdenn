@@ -105,20 +105,18 @@ function bindEvents() {
 
 // ─── Column Resizing ──────────────────────────────────────────────────────────
 // Draggable dividers on the graph-panel header. Dragging updates the CSS width
-// variable for that column; the flexible "Commit message" column absorbs the
-// slack. Resizing the Graph column also resizes the canvas and repaints.
-//
-// Columns BEFORE the flex "message" column resize via their right edge (the
-// column's right edge tracks its width). Columns AFTER it have a pinned right
-// edge, so they resize via their LEFT edge with an inverted drag direction —
-// otherwise the handle wouldn't follow the cursor.
+// variable for that column. Every real column has an explicit width; a trailing
+// flex spacer (.col-spacer / .commit-spacer) absorbs the slack, so every column
+// — including the message column — resizes cleanly via its right edge, and the
+// handle tracks the cursor. Resizing the Graph column also resizes the canvas.
 const RESIZABLE_COLS = [
-  { cls: 'col-branch', varName: '--branch-w', min: 60, side: 'right' },
-  { cls: 'col-graph',  varName: '--graph-w',  min: 80, side: 'right' },
-  { cls: 'col-author', varName: '--author-w', min: 60, side: 'left'  },
-  { cls: 'col-date',   varName: '--date-w',   min: 60, side: 'left'  },
-  { cls: 'col-sha',    varName: '--sha-w',    min: 50, side: 'left'  },
-  { cls: 'col-tag',    varName: '--tag-w',    min: 50, side: 'left'  },
+  { cls: 'col-branch', varName: '--branch-w', min: 60 },
+  { cls: 'col-graph',  varName: '--graph-w',  min: 80 },
+  { cls: 'col-msg',    varName: '--msg-w',    min: 80 },
+  { cls: 'col-author', varName: '--author-w', min: 60 },
+  { cls: 'col-date',   varName: '--date-w',   min: 60 },
+  { cls: 'col-sha',    varName: '--sha-w',    min: 50 },
+  { cls: 'col-tag',    varName: '--tag-w',    min: 50 },
 ];
 
 function initColumnResizers() {
@@ -127,7 +125,7 @@ function initColumnResizers() {
     const cell = header.querySelector('.' + col.cls);
     if (!cell) return;
     const handle = document.createElement('span');
-    handle.className = `col-resizer ${col.side}`;
+    handle.className = 'col-resizer';
     handle.addEventListener('mousedown', e => startColumnResize(e, col));
     cell.appendChild(handle);
   });
@@ -143,11 +141,10 @@ function startColumnResize(e, col) {
   );
 
   const isGraph = col.varName === '--graph-w';
-  const dir = col.side === 'left' ? -1 : 1; // left-edge handles invert the drag
   document.body.classList.add('col-resizing');
 
   const onMove = ev => {
-    const width = Math.max(col.min, startW + dir * (ev.clientX - startX));
+    const width = Math.max(col.min, startW + (ev.clientX - startX));
     rootStyle.setProperty(col.varName, width + 'px');
     // The column cell reflows live via CSS. GRAPH_W drives the canvas backing
     // size, so track it here and repaint the canvas once on release (below).
@@ -665,6 +662,7 @@ function renderCommitRows(graphData) {
         <div class="commit-date">${relativeDate(commit.timestamp)}</div>
         <div class="commit-sha">${commit.shortSha}</div>
         <div class="commit-tags">${raw(buildRefBadges(tagRefs))}</div>
+        <div class="commit-spacer"></div>
       </div>
     `;
   }));

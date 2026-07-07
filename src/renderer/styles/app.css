@@ -28,6 +28,7 @@
   --row-h:      28px;
   --branch-w:   170px;
   --graph-w:    220px;
+  --msg-w:      320px;
   --author-w:   130px;
   --date-w:     100px;
   --sha-w:      70px;
@@ -565,7 +566,8 @@ body.row-resizing { cursor: row-resize; user-select: none; }
 
 .col-branch { width: var(--branch-w); padding-left: 12px; flex-shrink: 0; position: relative; }
 .col-graph  { width: var(--graph-w); padding-left: 14px; flex-shrink: 0; position: relative; }
-.col-msg    { flex: 1; padding-left: 8px; min-width: 60px; }
+.col-msg    { flex: 0 1 var(--msg-w); padding-left: 8px; min-width: 80px; position: relative; }
+.col-spacer { flex: 1 1 0; min-width: 0; }
 .col-author { width: var(--author-w); flex-shrink: 0; position: relative; }
 .col-date   { width: var(--date-w); flex-shrink: 0; position: relative; }
 .col-sha    { width: var(--sha-w); flex-shrink: 0; position: relative; }
@@ -581,7 +583,6 @@ body.row-resizing { cursor: row-resize; user-select: none; }
   cursor: col-resize;
   z-index: 5;
 }
-.col-resizer.left { left: -3px; right: auto; }
 .col-resizer::after {
   content: '';
   position: absolute;
@@ -664,7 +665,8 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 }
 
 .commit-msg {
-  flex: 1;
+  flex: 0 1 var(--msg-w);
+  min-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -675,6 +677,7 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   align-items: center;
   gap: 6px;
 }
+.commit-spacer { flex: 1 1 0; min-width: 0; }
 
 .ref-badge {
   display: inline-block;
