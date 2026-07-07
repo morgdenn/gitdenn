@@ -435,7 +435,7 @@ function renderBranches() {
   const localItems  = locals.map(b => ({
     path: b, value: b, current: b === state.currentBranch,
   }));
-  const remoteItems = remotes.slice(0, 20).map(b => ({
+  const remoteItems = remotes.map(b => ({
     path: b.replace('remotes/', ''), value: b, current: false,
   }));
 
