@@ -827,6 +827,100 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   color: var(--text-sec);
 }
 
+/* ─── Working directory (WIP) staging UI ─────────────────────────────────────── */
+.wd { font-family: var(--font); }
+.wd-section { margin-bottom: 14px; }
+.wd-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.wd-bulk {
+  background: none;
+  border: 1px solid var(--border-lt);
+  color: var(--text-sec);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.wd-bulk:hover { background: var(--bg-hover); color: var(--text-pri); }
+.wd-empty { font-size: 11px; color: var(--text-muted); padding: 4px 2px; }
+
+.wd-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.wd-file:hover { background: var(--bg-hover); }
+.wd-status {
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+.wd-status.wd-new { color: var(--green); }
+.wd-status.wd-mod { color: var(--amber); }
+.wd-status.wd-del { color: var(--red); }
+.wd-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-sec);
+  direction: rtl;      /* keep the filename end visible */
+  text-align: left;
+}
+.wd-act {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border-lt);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-sec);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+.wd-act:hover { background: var(--accent); color: var(--bg-deep); border-color: var(--accent); }
+
+.wd-commit {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#commit-msg-input {
+  width: 100%;
+  resize: vertical;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-lt);
+  border-radius: 6px;
+  color: var(--text-pri);
+  font-family: var(--font);
+  font-size: 12px;
+  padding: 8px;
+  outline: none;
+}
+#commit-msg-input:focus { border-color: var(--accent); }
+#commit-btn { width: 100%; }
+#commit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ─── Repo view wrapper ──────────────────────────────────────────────────────── */
 #repo-view {
   flex: 1;

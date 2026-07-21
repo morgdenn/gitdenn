@@ -188,6 +188,82 @@ ipcMain.handle('git:checkoutRemote', async (event, { repoPath, remoteBranch }) =
   }
 });
 
+// Working-directory status with per-file staged/unstaged state
+ipcMain.handle('git:status', async (event, { repoPath }) => {
+  try {
+    const git = simpleGit(repoPath);
+    const st = await git.status();
+    const files = st.files.map(f => {
+      const untracked = f.index === '?' && f.working_dir === '?';
+      const staged = !untracked && f.index !== ' ' && f.index !== '';
+      const unstaged = untracked || (f.working_dir !== ' ' && f.working_dir !== '');
+      return { path: f.path, index: f.index, working_dir: f.working_dir, staged, unstaged, untracked };
+    });
+    return {
+      success: true,
+      files,
+      counts: {
+        modified: st.modified.length,
+        staged: st.staged.length,
+        untracked: st.not_added.length,
+        changed: st.files.length,
+      },
+    };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Stage the given paths (git add)
+ipcMain.handle('git:stage', async (event, { repoPath, paths }) => {
+  try {
+    await simpleGit(repoPath).add(paths);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Unstage the given paths (git reset -- <paths>)
+ipcMain.handle('git:unstage', async (event, { repoPath, paths }) => {
+  try {
+    await simpleGit(repoPath).reset(['--', ...paths]);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Stage everything (git add -A)
+ipcMain.handle('git:stageAll', async (event, { repoPath }) => {
+  try {
+    await simpleGit(repoPath).raw(['add', '-A']);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Unstage everything (git reset)
+ipcMain.handle('git:unstageAll', async (event, { repoPath }) => {
+  try {
+    await simpleGit(repoPath).raw(['reset']);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Commit the staged changes
+ipcMain.handle('git:commit', async (event, { repoPath, message }) => {
+  try {
+    const result = await simpleGit(repoPath).commit(message);
+    return { success: true, commit: result.commit };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Open a URL in the default browser
 ipcMain.handle('shell:openExternal', async (event, { url }) => {
   try {

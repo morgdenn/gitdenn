@@ -107,6 +107,12 @@ function bindEvents() {
 
   // Double-click a local branch → switch to it
   on('local-branches-list', 'dblclick', '.branch-item', el => checkoutLocalBranch(el.dataset.branch));
+
+  // Working-directory staging/commit actions (delegated, bound once)
+  on('detail-diff', 'click', '[data-act]', el => handleWipAction(el.dataset.act, el.dataset.path));
+  $('detail-diff').addEventListener('input', e => {
+    if (e.target.id === 'commit-msg-input') state.commitMsg = e.target.value;
+  });
 }
 
 // ─── Column Resizing ──────────────────────────────────────────────────────────
@@ -926,15 +932,7 @@ async function selectCommit(sha, idx) {
   detailContent.style.display = 'block';
 
   if (commit.isWip) {
-    const s = state.status || {};
-    $('detail-avatar').textContent = '✎';
-    $('detail-subject').textContent = 'Uncommitted changes';
-    $('detail-author').textContent =
-      `${s.modified || 0} modified · ${s.staged || 0} staged · ${s.untracked || 0} untracked`;
-    $('detail-date').textContent = '';
-    $('detail-sha').textContent = '';
-    $('detail-refs').innerHTML = '';
-    $('detail-diff').innerHTML = '';
+    await renderWipDetail();
     return;
   }
 
@@ -952,6 +950,103 @@ async function selectCommit(sha, idx) {
   if (diff.success) {
     renderDiff(diff.stat);
   }
+}
+
+// ─── Working Directory (WIP) — staging & commit ───────────────────────────────
+function statusLabel(ch, untracked) {
+  if (untracked) return { ch: 'U', cls: 'new' };
+  switch (ch) {
+    case 'A': return { ch: 'A', cls: 'new' };
+    case 'D': return { ch: 'D', cls: 'del' };
+    case 'R': return { ch: 'R', cls: 'mod' };
+    default:  return { ch: (ch || 'M').trim() || 'M', cls: 'mod' };
+  }
+}
+
+async function renderWipDetail() {
+  $('detail-avatar').textContent = '✎';
+  $('detail-subject').textContent = 'Uncommitted changes';
+  $('detail-date').textContent = '';
+  $('detail-sha').textContent = '';
+  $('detail-refs').innerHTML = '';
+
+  const res = await window.gitApp.status(state.repoPath);
+  const files = res.success ? res.files : [];
+  const staged = files.filter(f => f.staged);
+  const unstaged = files.filter(f => f.unstaged);
+  $('detail-author').textContent = `${staged.length} staged · ${unstaged.length} unstaged`;
+
+  const fileRow = (f, kind) => {
+    const label = statusLabel(kind === 'staged' ? f.index : f.working_dir, f.untracked && kind !== 'staged');
+    const act = kind === 'staged' ? 'unstage' : 'stage';
+    return html`
+      <div class="wd-file">
+        <span class="wd-status wd-${label.cls}">${label.ch}</span>
+        <span class="wd-path" title="${f.path}">${f.path}</span>
+        <button class="wd-act" data-act="${act}" data-path="${f.path}" title="${act}">
+          ${act === 'stage' ? '+' : '−'}
+        </button>
+      </div>`;
+  };
+
+  render('detail-diff', html`
+    <div class="wd">
+      <div class="wd-section">
+        <div class="wd-head">
+          <span>Staged (${staged.length})</span>
+          ${staged.length ? html`<button class="wd-bulk" data-act="unstage-all">Unstage all</button>` : ''}
+        </div>
+        ${staged.length ? staged.map(f => fileRow(f, 'staged')) : html`<div class="wd-empty">Nothing staged</div>`}
+      </div>
+      <div class="wd-section">
+        <div class="wd-head">
+          <span>Changes (${unstaged.length})</span>
+          ${unstaged.length ? html`<button class="wd-bulk" data-act="stage-all">Stage all</button>` : ''}
+        </div>
+        ${unstaged.length ? unstaged.map(f => fileRow(f, 'unstaged')) : html`<div class="wd-empty">No changes</div>`}
+      </div>
+      <div class="wd-commit">
+        <textarea id="commit-msg-input" placeholder="Commit message" rows="3">${state.commitMsg || ''}</textarea>
+        <button class="primary-btn" id="commit-btn" data-act="commit" ${staged.length ? '' : raw('disabled')}>
+          Commit ${staged.length} file${staged.length === 1 ? '' : 's'}
+        </button>
+      </div>
+    </div>
+  `);
+}
+
+// Re-fetch status and refresh the WIP detail + toolbar chips (no graph change).
+async function refreshStatus() {
+  const res = await window.gitApp.status(state.repoPath);
+  if (res.success) {
+    state.status = res.counts;
+    renderStatusChips(res.counts);
+  }
+  await renderWipDetail();
+}
+
+async function handleWipAction(act, path) {
+  if (!state.repoPath) return;
+  if (act === 'commit') return doCommit();
+  if (act === 'stage')        await window.gitApp.stage(state.repoPath, [path]);
+  else if (act === 'unstage') await window.gitApp.unstage(state.repoPath, [path]);
+  else if (act === 'stage-all')   await window.gitApp.stageAll(state.repoPath);
+  else if (act === 'unstage-all') await window.gitApp.unstageAll(state.repoPath);
+  await refreshStatus();
+}
+
+async function doCommit() {
+  const msg = (state.commitMsg || '').trim();
+  if (!msg) return alert('Please enter a commit message.');
+  const res = await window.gitApp.commit(state.repoPath, msg);
+  if (!res.success) return alert(`Commit failed: ${res.error}`);
+  state.commitMsg = '';
+  state.selectedSha = null;
+  // New commit → reload the whole graph, and reset the detail panel.
+  await loadRepo(state.repoPath);
+  detailContent.style.display = 'none';
+  detailPlaceholder.style.display = 'flex';
+  showToast('Committed');
 }
 
 function renderDiff(stat) {
