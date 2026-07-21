@@ -4,47 +4,64 @@
 //   • main / preload files         → relaunch the whole app (they run in the
 //                                     main process and cannot be hot-swapped)
 //
-// Enabled only when the app is started with --dev (see main.js), so packaged
-// builds never watch the filesystem.
+// Watches each source directory explicitly (non-recursive), which is far more
+// reliable across platforms than fs.watch({recursive:true}). Enabled only when
+// the app is started with --dev (see main.js).
 
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
-const RENDERER_DIR = path.join(__dirname, '../renderer');
-const MAIN_DIR = __dirname; // src/main — main.js, preload.js, this file
+const RENDERER_DIR = path.join(__dirname, '../renderer');       // index.html, app.js, ui.js
+const STYLES_DIR   = path.join(RENDERER_DIR, 'styles');         // app.css
+const MAIN_DIR     = __dirname;                                 // main.js, preload.js
 
 function watchForReload(getWindow) {
-  let timer = null;
-  const debounce = fn => {
-    clearTimeout(timer);
-    timer = setTimeout(fn, 120); // editors emit several events per save
-  };
+  const watchers = [];
+  let reloadTimer = null;
+  let restartTimer = null;
 
-  // Renderer changes → reload the page only.
-  fs.watch(RENDERER_DIR, { recursive: true }, (_event, filename) => {
-    if (!filename) return;
-    debounce(() => {
+  const reloadRenderer = filename => {
+    clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(() => {
       const win = getWindow();
       if (win && !win.isDestroyed()) {
         console.log(`[dev-reload] renderer changed (${filename}) → reloading page`);
         win.webContents.reloadIgnoringCache();
       }
-    });
-  });
+    }, 100);
+  };
 
-  // Main / preload changes → full restart.
-  fs.watch(MAIN_DIR, { recursive: true }, (_event, filename) => {
-    if (!filename) return;
-    if (filename.includes('dev-reload')) return; // ignore edits to this watcher
-    debounce(() => {
+  const restartApp = filename => {
+    clearTimeout(restartTimer);
+    restartTimer = setTimeout(() => {
       console.log(`[dev-reload] main process changed (${filename}) → restarting app`);
       app.relaunch();
       app.exit(0);
-    });
+    }, 100);
+  };
+
+  const watchDir = (dir, onChange) => {
+    try {
+      const w = fs.watch(dir, (event, filename) => {
+        if (filename) onChange(filename);
+      });
+      w.on('error', err => console.error(`[dev-reload] watch error on ${dir}: ${err.message}`));
+      watchers.push(w);
+      console.log(`[dev-reload] watching ${dir}`);
+    } catch (err) {
+      console.error(`[dev-reload] cannot watch ${dir}: ${err.message}`);
+    }
+  };
+
+  watchDir(RENDERER_DIR, reloadRenderer);
+  watchDir(STYLES_DIR, reloadRenderer);
+  watchDir(MAIN_DIR, filename => {
+    if (filename.includes('dev-reload')) return; // ignore edits to this watcher
+    restartApp(filename);
   });
 
-  console.log('[dev-reload] watching for changes (renderer → reload, main → restart)');
+  return watchers;
 }
 
 module.exports = { watchForReload };
