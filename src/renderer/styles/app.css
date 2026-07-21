@@ -686,6 +686,7 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.commit-row.wip .msg-text { color: var(--accent); font-style: italic; }
 
 .ref-badge {
   display: inline-block;

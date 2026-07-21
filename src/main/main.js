@@ -116,16 +116,21 @@ ipcMain.handle('git:log', async (event, { repoPath }) => {
     const origin = remotes.find(r => r.name === 'origin') || remotes[0];
     const remoteUrl = origin && origin.refs ? origin.refs.fetch : null;
 
+    let head = null;
+    try { head = (await git.revparse(['HEAD'])).trim(); } catch (e) { head = null; }
+
     return {
       success: true,
       commits,
       branches: branches.all,
       currentBranch: branches.current,
       remoteUrl,
+      head,
       status: {
         modified: status.modified.length,
         staged: status.staged.length,
         untracked: status.not_added.length,
+        changed: status.files.length,
       },
     };
   } catch (err) {

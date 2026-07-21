@@ -388,10 +388,29 @@ async function loadRepo(repoPath) {
     return;
   }
 
-  state.commits = result.commits;
   state.branches = result.branches;
   state.currentBranch = result.currentBranch;
   state.remoteUrl = result.remoteUrl || null;
+  state.status = result.status || {};
+
+  // Prepend a synthetic "WIP" commit for uncommitted changes, linked to HEAD.
+  const changed = state.status.changed || 0;
+  if (changed > 0 && result.head) {
+    const wip = {
+      sha: '__WIP__',
+      parents: [result.head],
+      authorName: '',
+      authorEmail: '',
+      timestamp: Math.floor(Date.now() / 1000),
+      subject: `Uncommitted changes · ${changed} file${changed === 1 ? '' : 's'}`,
+      refs: [],
+      shortSha: '',
+      isWip: true,
+    };
+    state.commits = [wip, ...result.commits];
+  } else {
+    state.commits = result.commits;
+  }
 
   // Update toolbar
   const repoName = repoPath.split(/[\\/]/).pop();
@@ -660,6 +679,19 @@ function renderCommitRows(graphData) {
     // Tint the graph cell to the right of this commit's graph line only.
     const lineX = LANE_PAD + row.lane * COL_W + COL_W / 2;
     const tint = raw(` style="--lane-tint: color-mix(in srgb, ${laneColor(row.lane)} 12%, transparent); --line-x: ${lineX}px"`);
+    if (commit.isWip) {
+      return html`
+        <div class="commit-row wip ${selected}" data-sha="${commit.sha}" data-idx="${i}"${tint}>
+          <div class="commit-branch"></div>
+          <div class="commit-graph-cell"></div>
+          <div class="commit-msg"><span class="msg-text">${commit.subject}</span></div>
+          <div class="commit-author"></div>
+          <div class="commit-date"></div>
+          <div class="commit-sha"></div>
+          <div class="commit-tags"></div>
+        </div>
+      `;
+    }
     return html`
       <div class="commit-row ${selected}" data-sha="${commit.sha}" data-idx="${i}"${tint}>
         <div class="commit-branch">${raw(buildRefBadges(branchRefs, laneColor(row.lane), remoteNames))}</div>
@@ -823,6 +855,27 @@ function paintGraph(graphData) {
     const y = rowY(i);
     const c = color(row.lane);
 
+    // WIP (uncommitted changes) node: hollow dashed ring, no initials
+    if (row.commit.isWip) {
+      ctx.beginPath();
+      ctx.arc(x, y, NODE_R, 0, Math.PI * 2);
+      ctx.fillStyle = '#2d2e28';
+      ctx.fill();
+      ctx.setLineDash([2.5, 2.5]);
+      ctx.strokeStyle = '#a6e22e';
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (row.commit.sha === state.selectedSha) {
+        ctx.beginPath();
+        ctx.arc(x, y, NODE_R + 2.5, 0, Math.PI * 2);
+        ctx.strokeStyle = '#f8f8f2';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      continue;
+    }
+
     // Filled avatar circle
     ctx.beginPath();
     ctx.arc(x, y, NODE_R, 0, Math.PI * 2);
@@ -871,6 +924,19 @@ async function selectCommit(sha, idx) {
 
   detailPlaceholder.style.display = 'none';
   detailContent.style.display = 'block';
+
+  if (commit.isWip) {
+    const s = state.status || {};
+    $('detail-avatar').textContent = '✎';
+    $('detail-subject').textContent = 'Uncommitted changes';
+    $('detail-author').textContent =
+      `${s.modified || 0} modified · ${s.staged || 0} staged · ${s.untracked || 0} untracked`;
+    $('detail-date').textContent = '';
+    $('detail-sha').textContent = '';
+    $('detail-refs').innerHTML = '';
+    $('detail-diff').innerHTML = '';
+    return;
+  }
 
   const initials = commit.authorName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   $('detail-avatar').textContent = initials;
