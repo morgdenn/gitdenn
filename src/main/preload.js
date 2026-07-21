@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('gitApp', {
   stageAll: (repoPath) => ipcRenderer.invoke('git:stageAll', { repoPath }),
   unstageAll: (repoPath) => ipcRenderer.invoke('git:unstageAll', { repoPath }),
   commit: (repoPath, message) => ipcRenderer.invoke('git:commit', { repoPath, message }),
+  push: (repoPath) => ipcRenderer.invoke('git:push', { repoPath }),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', { url }),
   openInVscode: (repoPath) => ipcRenderer.invoke('shell:openInVscode', { repoPath }),
   fetch: (repoPath) => ipcRenderer.invoke('git:fetch', { repoPath }),

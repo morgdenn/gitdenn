@@ -119,6 +119,23 @@ ipcMain.handle('git:log', async (event, { repoPath }) => {
     let head = null;
     try { head = (await git.revparse(['HEAD'])).trim(); } catch (e) { head = null; }
 
+    // Per-branch ahead/behind vs. upstream, from git's own tracking info.
+    const tracking = {};
+    try {
+      const raw = await git.raw([
+        'for-each-ref', '--format=%(refname:short)%09%(upstream:track)', 'refs/heads',
+      ]);
+      raw.split('\n').forEach(line => {
+        const tab = line.indexOf('\t');
+        if (tab < 0) return;
+        const name = line.slice(0, tab);
+        const track = line.slice(tab + 1);
+        const ahead = /ahead (\d+)/.exec(track);
+        const behind = /behind (\d+)/.exec(track);
+        if (name) tracking[name] = { ahead: ahead ? +ahead[1] : 0, behind: behind ? +behind[1] : 0 };
+      });
+    } catch (e) { /* no upstreams */ }
+
     return {
       success: true,
       commits,
@@ -126,6 +143,7 @@ ipcMain.handle('git:log', async (event, { repoPath }) => {
       currentBranch: branches.current,
       remoteUrl,
       head,
+      tracking,
       status: {
         modified: status.modified.length,
         staged: status.staged.length,
@@ -249,6 +267,23 @@ ipcMain.handle('git:unstageAll', async (event, { repoPath }) => {
   try {
     await simpleGit(repoPath).raw(['reset']);
     return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Push the current branch (setting upstream if it has none)
+ipcMain.handle('git:push', async (event, { repoPath }) => {
+  try {
+    const git = simpleGit(repoPath);
+    const status = await git.status();
+    const branch = status.current;
+    if (status.tracking) {
+      await git.push();
+    } else {
+      await git.push(['-u', 'origin', branch]);
+    }
+    return { success: true, branch };
   } catch (err) {
     return { success: false, error: err.message };
   }

@@ -291,6 +291,12 @@ body.row-resizing { cursor: row-resize; user-select: none; }
 .branch-item:hover { background: var(--bg-hover); color: var(--text-pri); }
 .branch-item.current { color: var(--text-pri); font-weight: 600; }
 .branch-remote { color: var(--text-muted); }
+.branch-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Ahead / behind indicators */
+.branch-ab { flex-shrink: 0; display: flex; gap: 5px; font-family: var(--font-mono); font-size: 10px; }
+.ab-ahead { color: var(--green); }
+.ab-behind { color: var(--amber); }
 
 /* Tree glyphs (branch / folder / checked-out) */
 .tree-icon { flex-shrink: 0; }

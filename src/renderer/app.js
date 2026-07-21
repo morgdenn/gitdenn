@@ -73,6 +73,7 @@ function bindEvents() {
   $('btn-fetch').addEventListener('click', doFetch);
 
   $('btn-branch').addEventListener('click', showBranchModal);
+  $('btn-push').addEventListener('click', doPush);
   $('btn-github').addEventListener('click', () => {
     if (state.githubUrl) window.gitApp.openExternal(state.githubUrl);
   });
@@ -398,6 +399,7 @@ async function loadRepo(repoPath) {
   state.currentBranch = result.currentBranch;
   state.remoteUrl = result.remoteUrl || null;
   state.status = result.status || {};
+  state.tracking = result.tracking || {};
 
   // Prepend a synthetic "WIP" commit for uncommitted changes, linked to HEAD.
   const changed = state.status.changed || 0;
@@ -531,10 +533,17 @@ function renderBranchTree(node, opts) {
       const it = child.leaf;
       const cls = `branch-item${opts.remote ? ' branch-remote' : ''}${it.current ? ' current' : ''}`;
       const title = opts.remote ? raw(' title="Double-click to check out locally"') : '';
+      const track = opts.remote ? null : (state.tracking || {})[it.value];
+      const ab = track && (track.ahead || track.behind) ? html`
+        <span class="branch-ab">
+          ${track.ahead ? html`<span class="ab ab-ahead">${track.ahead}↑</span>` : ''}
+          ${track.behind ? html`<span class="ab ab-behind">${track.behind}↓</span>` : ''}
+        </span>` : '';
       return html`
         <div class="${cls}" data-branch="${it.value}"${title}>
           ${raw(it.current ? ICON_CHECK : ICON_BRANCH)}
-          ${child.label}
+          <span class="branch-name">${child.label}</span>
+          ${ab}
         </div>`;
     }
     return html`
@@ -1091,6 +1100,20 @@ function updateRepoLinks() {
   const url = githubWebUrl(state.remoteUrl);
   state.githubUrl = url;
   $('btn-github').style.display = url ? '' : 'none';
+}
+
+async function doPush() {
+  if (!state.repoPath) return;
+  const btn = $('btn-push');
+  btn.disabled = true;
+  const result = await window.gitApp.push(state.repoPath);
+  btn.disabled = false;
+  if (!result.success) {
+    alert(`Push failed: ${result.error}`);
+    return;
+  }
+  showToast(`Pushed ${result.branch}`);
+  await loadRepo(state.repoPath);
 }
 
 async function doFetch() {
