@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('gitApp', {
   checkout: (repoPath, ref) => ipcRenderer.invoke('git:checkout', { repoPath, ref }),
   checkoutRemote: (repoPath, remoteBranch) => ipcRenderer.invoke('git:checkoutRemote', { repoPath, remoteBranch }),
   createBranch: (repoPath, name) => ipcRenderer.invoke('git:createBranch', { repoPath, name }),
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', { url }),
+  openInVscode: (repoPath) => ipcRenderer.invoke('shell:openInVscode', { repoPath }),
   fetch: (repoPath) => ipcRenderer.invoke('git:fetch', { repoPath }),
 
   // Events

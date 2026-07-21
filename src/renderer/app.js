@@ -73,6 +73,12 @@ function bindEvents() {
   $('btn-fetch').addEventListener('click', doFetch);
 
   $('btn-branch').addEventListener('click', showBranchModal);
+  $('btn-github').addEventListener('click', () => {
+    if (state.githubUrl) window.gitApp.openExternal(state.githubUrl);
+  });
+  $('btn-vscode').addEventListener('click', () => {
+    if (state.repoPath) window.gitApp.openInVscode(state.repoPath);
+  });
   $('branch-cancel').addEventListener('click', hideBranchModal);
   $('branch-cancel-2').addEventListener('click', hideBranchModal);
   $('branch-confirm').addEventListener('click', doCreateBranch);
@@ -384,10 +390,12 @@ async function loadRepo(repoPath) {
   state.commits = result.commits;
   state.branches = result.branches;
   state.currentBranch = result.currentBranch;
+  state.remoteUrl = result.remoteUrl || null;
 
   // Update toolbar
   const repoName = repoPath.split(/[\\/]/).pop();
   $('repo-name-display').textContent = repoName;
+  updateRepoLinks();
   $('branches-panel').classList.add('has-repo');
   renderBranches();
   renderStatusChips(result.status);
@@ -909,6 +917,21 @@ function renderDiff(stat) {
 }
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
+// Convert a git remote URL to its GitHub web URL, or null if not GitHub.
+// Handles https (github.com/user/repo(.git)) and ssh (git@github.com:user/repo).
+function githubWebUrl(remoteUrl) {
+  if (!remoteUrl) return null;
+  const m = remoteUrl.match(/github\.com[:/](.+?)(?:\.git)?\/?$/i);
+  return m ? `https://github.com/${m[1]}` : null;
+}
+
+// Show/hide the GitHub button based on whether the repo is hosted there.
+function updateRepoLinks() {
+  const url = githubWebUrl(state.remoteUrl);
+  state.githubUrl = url;
+  $('btn-github').style.display = url ? '' : 'none';
+}
+
 async function doFetch() {
   if (!state.repoPath) return;
   const btn = $('btn-fetch');

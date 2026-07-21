@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const simpleGit = require('simple-git');
 const fs = require('fs');
@@ -111,13 +111,16 @@ ipcMain.handle('git:log', async (event, { repoPath }) => {
     const commits = parseRawLog(rawLog);
     const branches = await git.branch(['-a']);
     const status = await git.status();
-    const remotes = await git.remote(['-v']);
+    const remotes = await git.getRemotes(true);
+    const origin = remotes.find(r => r.name === 'origin') || remotes[0];
+    const remoteUrl = origin && origin.refs ? origin.refs.fetch : null;
 
     return {
       success: true,
       commits,
       branches: branches.all,
       currentBranch: branches.current,
+      remoteUrl,
       status: {
         modified: status.modified.length,
         staged: status.staged.length,
@@ -174,6 +177,27 @@ ipcMain.handle('git:checkoutRemote', async (event, { repoPath, remoteBranch }) =
       await git.checkout(['-b', localName, '--track', remoteRef]);
     }
     return { success: true, branch: localName };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Open a URL in the default browser
+ipcMain.handle('shell:openExternal', async (event, { url }) => {
+  try {
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Open the repo folder in VS Code via its URL protocol
+ipcMain.handle('shell:openInVscode', async (event, { repoPath }) => {
+  try {
+    const uri = 'vscode://file/' + repoPath.replace(/\\/g, '/');
+    await shell.openExternal(uri);
+    return { success: true };
   } catch (err) {
     return { success: false, error: err.message };
   }
