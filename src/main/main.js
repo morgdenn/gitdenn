@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const simpleGit = require('simple-git');
 const fs = require('fs');
+const { exec } = require('child_process');
 
 let mainWindow;
 
@@ -192,15 +193,20 @@ ipcMain.handle('shell:openExternal', async (event, { url }) => {
   }
 });
 
-// Open the repo folder in VS Code via its URL protocol
+// Open the repo folder in a NEW VS Code window. Uses the `code` CLI with
+// --new-window; falls back to the vscode:// URL protocol (which reuses the
+// current window) if the CLI isn't on PATH.
 ipcMain.handle('shell:openInVscode', async (event, { repoPath }) => {
-  try {
-    const uri = 'vscode://file/' + repoPath.replace(/\\/g, '/');
-    await shell.openExternal(uri);
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
+  const quoted = `"${repoPath.replace(/"/g, '\\"')}"`;
+  return new Promise(resolve => {
+    exec(`code --new-window ${quoted}`, err => {
+      if (!err) return resolve({ success: true });
+      // CLI unavailable → fall back to the URL protocol (reuses a window)
+      shell.openExternal('vscode://file/' + repoPath.replace(/\\/g, '/'))
+        .then(() => resolve({ success: true, viaProtocol: true }))
+        .catch(e => resolve({ success: false, error: e.message }));
+    });
+  });
 });
 
 // Create a new local branch off the current HEAD and switch to it
