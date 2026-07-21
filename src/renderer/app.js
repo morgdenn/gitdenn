@@ -993,17 +993,17 @@ async function renderWipDetail() {
     <div class="wd">
       <div class="wd-section">
         <div class="wd-head">
-          <span>Staged (${staged.length})</span>
-          ${staged.length ? html`<button class="wd-bulk" data-act="unstage-all">Unstage all</button>` : ''}
-        </div>
-        ${staged.length ? staged.map(f => fileRow(f, 'staged')) : html`<div class="wd-empty">Nothing staged</div>`}
-      </div>
-      <div class="wd-section">
-        <div class="wd-head">
           <span>Changes (${unstaged.length})</span>
           ${unstaged.length ? html`<button class="wd-bulk" data-act="stage-all">Stage all</button>` : ''}
         </div>
         ${unstaged.length ? unstaged.map(f => fileRow(f, 'unstaged')) : html`<div class="wd-empty">No changes</div>`}
+      </div>
+      <div class="wd-section">
+        <div class="wd-head">
+          <span>Staged (${staged.length})</span>
+          ${staged.length ? html`<button class="wd-bulk" data-act="unstage-all">Unstage all</button>` : ''}
+        </div>
+        ${staged.length ? staged.map(f => fileRow(f, 'staged')) : html`<div class="wd-empty">Nothing staged</div>`}
       </div>
       <div class="wd-commit">
         <textarea id="commit-msg-input" placeholder="Commit message" rows="3">${state.commitMsg || ''}</textarea>
