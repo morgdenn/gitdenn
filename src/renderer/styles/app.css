@@ -28,11 +28,10 @@
   --row-h:      28px;
   --branch-w:   170px;
   --graph-w:    220px;
-  --msg-w:      320px;
-  --author-w:   130px;
-  --date-w:     100px;
-  --sha-w:      70px;
-  --tag-w:      120px;
+  --author-w:   120px;
+  --date-w:     90px;
+  --sha-w:      66px;
+  --tag-w:      90px;
   --detail-w:   340px;
   --sidebar-w:  220px;
   --repos-w:    210px;
@@ -566,8 +565,7 @@ body.row-resizing { cursor: row-resize; user-select: none; }
 
 .col-branch { width: var(--branch-w); padding-left: 12px; flex-shrink: 0; position: relative; }
 .col-graph  { width: var(--graph-w); padding-left: 14px; flex-shrink: 0; position: relative; }
-.col-msg    { flex: 0 1 var(--msg-w); padding-left: 8px; min-width: 80px; position: relative; }
-.col-spacer { flex: 1 1 0; min-width: 0; }
+.col-msg    { flex: 1 1 0; padding: 0 12px 0 8px; min-width: 120px; }
 .col-author { width: var(--author-w); flex-shrink: 0; position: relative; }
 .col-date   { width: var(--date-w); flex-shrink: 0; position: relative; }
 .col-sha    { width: var(--sha-w); flex-shrink: 0; position: relative; }
@@ -583,6 +581,7 @@ body.row-resizing { cursor: row-resize; user-select: none; }
   cursor: col-resize;
   z-index: 5;
 }
+.col-resizer.left { left: -3px; right: auto; }
 .col-resizer::after {
   content: '';
   position: absolute;
@@ -665,19 +664,22 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 }
 
 .commit-msg {
-  flex: 0 1 var(--msg-w);
-  min-width: 80px;
+  flex: 1 1 0;
+  min-width: 120px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 12px;
   color: var(--text-pri);
-  padding-left: 8px;
+  padding: 0 12px 0 8px;
   display: flex;
   align-items: center;
   gap: 6px;
 }
-.commit-spacer { flex: 1 1 0; min-width: 0; }
+.msg-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .ref-badge {
   display: inline-block;
