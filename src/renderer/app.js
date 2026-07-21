@@ -73,6 +73,7 @@ function bindEvents() {
   $('btn-fetch').addEventListener('click', doFetch);
 
   $('btn-branch').addEventListener('click', showBranchModal);
+  $('btn-pull').addEventListener('click', doPull);
   $('btn-push').addEventListener('click', doPush);
   $('btn-github').addEventListener('click', () => {
     if (state.githubUrl) window.gitApp.openExternal(state.githubUrl);
@@ -1100,6 +1101,23 @@ function updateRepoLinks() {
   const url = githubWebUrl(state.remoteUrl);
   state.githubUrl = url;
   $('btn-github').style.display = url ? '' : 'none';
+}
+
+async function doPull() {
+  if (!state.repoPath) return;
+  const btn = $('btn-pull');
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spinner"></span> Pulling…';
+  const result = await window.gitApp.pull(state.repoPath);
+  btn.disabled = false;
+  btn.innerHTML = original;
+  if (!result.success) {
+    alert(`Pull failed: ${result.error}`);
+    return;
+  }
+  showToast('Pulled');
+  await loadRepo(state.repoPath);
 }
 
 async function doPush() {
