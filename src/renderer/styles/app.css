@@ -626,7 +626,13 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   border-bottom: 1px solid rgba(59,60,53,0.5);
   user-select: none;
 }
-.commit-row.selected { background: var(--bg-sel); }
+/* Selection highlights only the columns from Message rightward; the Branch
+   and Graph columns stay clear so the graph/lane tint reads cleanly. */
+.commit-row.selected .commit-msg,
+.commit-row.selected .commit-author,
+.commit-row.selected .commit-date,
+.commit-row.selected .commit-sha,
+.commit-row.selected .commit-tags { background: var(--bg-sel); }
 
 .commit-branch {
   width: var(--branch-w);
