@@ -96,6 +96,11 @@ function bindEvents() {
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); }
     if ((e.metaKey || e.ctrlKey) && e.key === 'r') loadRepo(state.repoPath);
+    // Ctrl/Cmd+Shift+E → open the repo in VS Code
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'e' || e.key === 'E')) {
+      e.preventDefault();
+      if (state.repoPath) window.gitApp.openInVscode(state.repoPath);
+    }
   });
 
   // Graph scroll → repaint canvas
