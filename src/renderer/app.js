@@ -1105,9 +1105,12 @@ function updateRepoLinks() {
 async function doPush() {
   if (!state.repoPath) return;
   const btn = $('btn-push');
+  const original = btn.innerHTML;
   btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spinner"></span> Pushing…';
   const result = await window.gitApp.push(state.repoPath);
   btn.disabled = false;
+  btn.innerHTML = original;
   if (!result.success) {
     alert(`Push failed: ${result.error}`);
     return;
