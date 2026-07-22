@@ -106,6 +106,13 @@ function bindEvents() {
   // Graph scroll → repaint canvas
   graphScroll.addEventListener('scroll', () => paintGraph(state.graphData));
 
+  // Reflect working-directory changes automatically: immediately when the
+  // window regains focus, and via a light poll while it's focused.
+  window.addEventListener('focus', () => refreshWorkingState());
+  setInterval(() => {
+    if (state.repoPath && document.hasFocus()) refreshWorkingState();
+  }, 2000);
+
   // Commit row selection (delegated — survives every re-render, bound once)
   on(commitRows, 'click', '.commit-row', el => selectCommit(el.dataset.sha, el.dataset.idx));
 
@@ -406,25 +413,15 @@ async function loadRepo(repoPath) {
   state.remoteUrl = result.remoteUrl || null;
   state.status = result.status || {};
   state.tracking = result.tracking || {};
+  state.head = result.head || null;
+  state.realCommits = result.commits;
+  state.statusSig = statusSignature(state.status);
 
   // Prepend a synthetic "WIP" commit for uncommitted changes, linked to HEAD.
   const changed = state.status.changed || 0;
-  if (changed > 0 && result.head) {
-    const wip = {
-      sha: '__WIP__',
-      parents: [result.head],
-      authorName: '',
-      authorEmail: '',
-      timestamp: Math.floor(Date.now() / 1000),
-      subject: `Uncommitted changes · ${changed} file${changed === 1 ? '' : 's'}`,
-      refs: [],
-      shortSha: '',
-      isWip: true,
-    };
-    state.commits = [wip, ...result.commits];
-  } else {
-    state.commits = result.commits;
-  }
+  state.commits = (changed > 0 && state.head)
+    ? [buildWipCommit(changed), ...result.commits]
+    : result.commits;
 
   // Update toolbar
   const repoName = repoPath.split(/[\\/]/).pop();
@@ -432,7 +429,7 @@ async function loadRepo(repoPath) {
   updateRepoLinks();
   $('branches-panel').classList.add('has-repo');
   renderBranches();
-  renderStatusChips(result.status);
+  renderStatusChips(state.status);
   addRecentRepo(repoPath);
   renderRecentRepos();
 
@@ -441,6 +438,54 @@ async function loadRepo(repoPath) {
   state.graphData = graphData;
   renderCommitRows(graphData);
   paintGraph(graphData);
+}
+
+// A synthetic "WIP" commit representing uncommitted changes, linked to HEAD.
+function buildWipCommit(changed) {
+  return {
+    sha: '__WIP__',
+    parents: state.head ? [state.head] : [],
+    authorName: '',
+    authorEmail: '',
+    timestamp: Math.floor(Date.now() / 1000),
+    subject: `Uncommitted changes · ${changed} file${changed === 1 ? '' : 's'}`,
+    refs: [],
+    shortSha: '',
+    isWip: true,
+  };
+}
+
+function statusSignature(c) {
+  return `${c.changed || 0}:${c.staged || 0}:${c.modified || 0}:${c.untracked || 0}`;
+}
+
+// Re-check the working directory and, if it changed, update the WIP node,
+// status chips, and (if open) the WIP detail — without a full graph reload.
+// Cheap enough to poll; skips re-render when nothing changed.
+async function refreshWorkingState() {
+  if (!state.repoPath || !state.realCommits) return;
+  const res = await window.gitApp.status(state.repoPath);
+  if (!res.success) return;
+
+  const sig = statusSignature(res.counts);
+  if (sig === state.statusSig) return; // nothing changed → no work
+  state.statusSig = sig;
+  state.status = res.counts;
+  renderStatusChips(res.counts);
+
+  const changed = res.counts.changed || 0;
+  state.commits = (changed > 0 && state.head)
+    ? [buildWipCommit(changed), ...state.realCommits]
+    : state.realCommits;
+
+  const scrollTop = graphScroll.scrollTop;
+  const graphData = computeGraphLayout(state.commits);
+  state.graphData = graphData;
+  renderCommitRows(graphData);
+  paintGraph(graphData);
+  graphScroll.scrollTop = scrollTop;
+
+  if (state.selectedSha === '__WIP__') renderWipDetail();
 }
 
 function showLoading(text) {
