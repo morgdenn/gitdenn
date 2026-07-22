@@ -624,7 +624,7 @@ const ICON_CHECK = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height
   <path d="M4.6 8.2l2.1 2.2 4.7-4.9" fill="none" style="stroke:var(--bg-deep)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
-function renderBranchTree(node, opts) {
+function renderBranchTree(node, opts, depth = 0) {
   const entries = Object.values(node.children).sort((a, b) => {
     const aLeaf = !!a.leaf, bLeaf = !!b.leaf;
     if (aLeaf !== bLeaf) return aLeaf ? 1 : -1;
@@ -649,10 +649,13 @@ function renderBranchTree(node, opts) {
           ${ab}
         </div>`;
     }
+    // Local folders open by default; remote folders stay folded except the
+    // top-level remote (e.g. "origin"), so the Remote list opens onto origin.
+    const isOpen = !opts.remote || depth === 0;
     return html`
-      <details class="branch-folder" ${opts.remote ? '' : raw('open')}>
+      <details class="branch-folder" ${isOpen ? raw('open') : ''}>
         <summary class="branch-folder-label">${raw(ICON_FOLDER)}${child.label}</summary>
-        <div class="branch-tree-children">${renderBranchTree(child, opts)}</div>
+        <div class="branch-tree-children">${renderBranchTree(child, opts, depth + 1)}</div>
       </details>`;
   });
 }
