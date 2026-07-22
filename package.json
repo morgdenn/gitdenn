@@ -30,6 +30,11 @@
       "public/**/*",
       "package.json"
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "morgdenn",
+      "repo": "gitdenn"
+    },
     "win": {
       "target": [
         "nsis",
