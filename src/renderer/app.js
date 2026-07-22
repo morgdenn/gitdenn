@@ -1108,8 +1108,14 @@ async function renderFileQuickView() {
     <div class="wd">
       ${header}
       <div class="qv-diff">${raw(renderUnifiedDiff(res.success ? res.diff : ''))}</div>
-      <div class="qv-actions">
-        <button class="primary-btn" data-act="view-toggle">${staged ? 'Unstage file' : 'Stage file'}</button>
+      <div class="qv-actions split-wrap">
+        <div class="split-btn">
+          <button class="primary-btn split-main" data-act="view-toggle">${staged ? 'Unstage file' : 'Stage file'}</button>
+          <button class="primary-btn split-caret" data-act="view-menu" title="More actions">▾</button>
+        </div>
+        <div class="split-menu" id="qv-menu" hidden>
+          <button class="split-menu-item" data-act="discard">Discard changes</button>
+        </div>
       </div>
     </div>
   `);
@@ -1143,6 +1149,8 @@ async function handleWipAction(act, path) {
   if (!state.repoPath) return;
   if (act === 'commit') return doCommit();
   if (act === 'wip-back') { state.wipViewFile = null; return renderWipDetail(); }
+  if (act === 'view-menu') { const m = $('qv-menu'); if (m) m.hidden = !m.hidden; return; }
+  if (act === 'discard') return discardViewedFile();
   if (act === 'view-toggle') {
     const v = state.wipViewFile;
     if (!v) return;
@@ -1170,6 +1178,19 @@ async function doCommit() {
   detailContent.style.display = 'none';
   detailPlaceholder.style.display = 'flex';
   showToast('Committed');
+}
+
+// Discard all changes to the currently-viewed file (destructive → confirm).
+async function discardViewedFile() {
+  const v = state.wipViewFile;
+  if (!v) return;
+  const ok = confirm(`Discard all changes to ${v.file}?\n\nThis cannot be undone.`);
+  if (!ok) return;
+  const res = await window.gitApp.discard(state.repoPath, v.file, v.untracked);
+  if (!res.success) return alert(`Discard failed: ${res.error}`);
+  state.wipViewFile = null;
+  showToast('Discarded changes');
+  await refreshWorkingState(); // change count dropped → update graph WIP node too
 }
 
 function renderDiff(stat) {

@@ -958,7 +958,48 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 .dl-del  { background: rgba(249,38,114,0.13); color: var(--text-pri); }
 .dl-hunk { background: var(--bg-hover); color: var(--text-muted); }
 .qv-actions { margin-top: 12px; }
-.qv-actions .primary-btn { width: 100%; }
+
+/* Split button: primary action + dropdown caret */
+.split-wrap { position: relative; }
+.split-btn { display: flex; }
+.split-main {
+  flex: 1;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.split-caret {
+  width: 34px;
+  padding: 8px 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 1px solid rgba(30, 31, 28, 0.25);
+}
+.split-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  min-width: 160px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-lt);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  z-index: 20;
+}
+.split-menu[hidden] { display: none; }
+.split-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--red);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: var(--font);
+  cursor: pointer;
+}
+.split-menu-item:hover { background: var(--bg-hover); }
 
 /* ─── Repo view wrapper ──────────────────────────────────────────────────────── */
 #repo-view {

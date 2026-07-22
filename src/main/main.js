@@ -255,6 +255,20 @@ ipcMain.handle('git:fileDiff', async (event, { repoPath, file, staged, untracked
   }
 });
 
+// Discard a file's changes: delete it if untracked, else restore it to HEAD
+ipcMain.handle('git:discard', async (event, { repoPath, file, untracked }) => {
+  try {
+    if (untracked) {
+      fs.rmSync(path.join(repoPath, file), { force: true });
+    } else {
+      await simpleGit(repoPath).raw(['checkout', 'HEAD', '--', file]);
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Stage the given paths (git add)
 ipcMain.handle('git:stage', async (event, { repoPath, paths }) => {
   try {
