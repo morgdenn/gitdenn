@@ -1,7 +1,7 @@
 {
   "name": "gitdenn",
   "version": "1.0.0",
-  "description": "A GitKraken-style desktop Git client built with Electron",
+  "description": "A desktop Git client built with Electron",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",

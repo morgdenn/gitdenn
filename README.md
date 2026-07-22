@@ -1,4 +1,4 @@
-# GitDenn — A GitKraken-style Desktop Git Client
+# GitDenn — A Desktop Git Client
 
 Built with Electron + simple-git. Visualizes commit history as an interactive branch graph.
 
