@@ -1108,6 +1108,9 @@ async function renderFileQuickView() {
     <div class="wd">
       ${header}
       <div class="qv-diff">${raw(renderUnifiedDiff(res.success ? res.diff : ''))}</div>
+      <div class="qv-actions">
+        <button class="primary-btn" data-act="view-toggle">${staged ? 'Unstage file' : 'Stage file'}</button>
+      </div>
     </div>
   `);
 }
@@ -1140,6 +1143,14 @@ async function handleWipAction(act, path) {
   if (!state.repoPath) return;
   if (act === 'commit') return doCommit();
   if (act === 'wip-back') { state.wipViewFile = null; return renderWipDetail(); }
+  if (act === 'view-toggle') {
+    const v = state.wipViewFile;
+    if (!v) return;
+    if (v.staged) await window.gitApp.unstage(state.repoPath, [v.file]);
+    else          await window.gitApp.stage(state.repoPath, [v.file]);
+    state.wipViewFile = null; // return to the staging list
+    return refreshStatus();
+  }
   if (act === 'stage')        await window.gitApp.stage(state.repoPath, [path]);
   else if (act === 'unstage') await window.gitApp.unstage(state.repoPath, [path]);
   else if (act === 'stage-all')   await window.gitApp.stageAll(state.repoPath);

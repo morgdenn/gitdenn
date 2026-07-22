@@ -957,6 +957,8 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 .dl-add  { background: rgba(166,226,46,0.13); color: var(--text-pri); }
 .dl-del  { background: rgba(249,38,114,0.13); color: var(--text-pri); }
 .dl-hunk { background: var(--bg-hover); color: var(--text-muted); }
+.qv-actions { margin-top: 12px; }
+.qv-actions .primary-btn { width: 100%; }
 
 /* ─── Repo view wrapper ──────────────────────────────────────────────────────── */
 #repo-view {
