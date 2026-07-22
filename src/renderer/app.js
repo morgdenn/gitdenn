@@ -106,11 +106,12 @@ function bindEvents() {
   // Graph scroll → repaint canvas
   graphScroll.addEventListener('scroll', () => paintGraph(state.graphData));
 
-  // Reflect working-directory changes automatically: immediately when the
-  // window regains focus, and via a light poll while it's focused.
+  // Reflect working-directory changes automatically: immediately on focus, and
+  // via a light poll that runs whether or not the window is focused (so edits
+  // show while GitDenn sits side-by-side with an editor).
   window.addEventListener('focus', () => refreshWorkingState());
   setInterval(() => {
-    if (state.repoPath && document.hasFocus()) refreshWorkingState();
+    if (state.repoPath) refreshWorkingState();
   }, 2000);
 
   // Commit row selection (delegated — survives every re-render, bound once)
