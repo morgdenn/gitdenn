@@ -1,6 +1,10 @@
-# GitDenn — A Desktop Git Client
+<p align="center">
+  <img src="public/logo.svg" alt="GitDenn logo" width="128" height="128" />
+</p>
 
-Built with Electron + simple-git. Visualizes commit history as an interactive branch graph.
+<h1 align="center">GitDenn — A Desktop Git Client</h1>
+
+<p align="center">Built with Electron + simple-git. Visualizes commit history as an interactive branch graph.</p>
 
 ## Features
 
