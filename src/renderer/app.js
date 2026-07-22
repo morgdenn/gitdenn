@@ -650,7 +650,7 @@ function renderBranchTree(node, opts) {
         </div>`;
     }
     return html`
-      <details class="branch-folder" open>
+      <details class="branch-folder" ${opts.remote ? '' : raw('open')}>
         <summary class="branch-folder-label">${raw(ICON_FOLDER)}${child.label}</summary>
         <div class="branch-tree-children">${renderBranchTree(child, opts)}</div>
       </details>`;
