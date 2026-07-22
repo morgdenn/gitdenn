@@ -8,19 +8,39 @@
   <link rel="stylesheet" href="styles/app.css" />
 </head>
 <body>
+  <!-- Reusable logo: a cartoon bear sitting at the entrance to his round den -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="logo-den" viewBox="0 0 64 64">
+      <!-- Den: stone rim, green accent ring, dark opening -->
+      <circle cx="32" cy="31" r="28" fill="#45463c"/>
+      <circle cx="32" cy="31" r="28" fill="none" stroke="#a6e22e" stroke-width="2" opacity="0.55"/>
+      <circle cx="32" cy="33" r="22" fill="#141509"/>
+      <!-- Grassy ground -->
+      <ellipse cx="32" cy="60" rx="27" ry="8" fill="#5f8a29"/>
+      <!-- Bear -->
+      <ellipse cx="32" cy="46" rx="14" ry="13" fill="#9c7248"/>
+      <ellipse cx="24" cy="54" rx="4.5" ry="3.3" fill="#7d5a38"/>
+      <ellipse cx="40" cy="54" rx="4.5" ry="3.3" fill="#7d5a38"/>
+      <ellipse cx="32" cy="48" rx="8" ry="8" fill="#c9a06f" opacity="0.5"/>
+      <circle cx="23" cy="23" r="4.5" fill="#8a6440"/>
+      <circle cx="41" cy="23" r="4.5" fill="#8a6440"/>
+      <circle cx="23" cy="23" r="2" fill="#c9a06f"/>
+      <circle cx="41" cy="23" r="2" fill="#c9a06f"/>
+      <circle cx="32" cy="29" r="11" fill="#9c7248"/>
+      <ellipse cx="32" cy="33" rx="6" ry="4.6" fill="#ecd8b6"/>
+      <ellipse cx="32" cy="30.5" rx="2" ry="1.4" fill="#2b2a25"/>
+      <path d="M32 32v2.4M32 34.4q-2 1.4-3.4 0M32 34.4q2 1.4 3.4 0" fill="none" stroke="#2b2a25" stroke-width="0.8" stroke-linecap="round"/>
+      <circle cx="27.5" cy="27" r="1.6" fill="#2b2a25"/>
+      <circle cx="36.5" cy="27" r="1.6" fill="#2b2a25"/>
+    </symbol>
+  </svg>
+
   <div id="app">
     <!-- Sidebar -->
     <aside id="sidebar">
       <div id="sidebar-header">
         <div class="logo">
-          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-            <circle cx="11" cy="11" r="10" stroke="#a6e22e" stroke-width="1.5"/>
-            <circle cx="11" cy="7" r="2.5" fill="#a6e22e"/>
-            <circle cx="6" cy="15" r="2.5" fill="#66d9ef"/>
-            <circle cx="16" cy="15" r="2.5" fill="#f92672"/>
-            <line x1="11" y1="9.5" x2="6" y2="12.5" stroke="#a6e22e" stroke-width="1.2"/>
-            <line x1="11" y1="9.5" x2="16" y2="12.5" stroke="#a6e22e" stroke-width="1.2"/>
-          </svg>
+          <svg class="logo-icon" width="24" height="24" viewBox="0 0 64 64"><use href="#logo-den"/></svg>
           <span>GitDenn</span>
         </div>
       </div>
@@ -91,14 +111,7 @@
       <!-- Welcome screen -->
       <div id="welcome-screen">
         <div class="welcome-inner">
-          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-            <circle cx="32" cy="32" r="30" stroke="#a6e22e" stroke-width="2" opacity="0.4"/>
-            <circle cx="32" cy="20" r="7" fill="#a6e22e"/>
-            <circle cx="16" cy="44" r="7" fill="#66d9ef"/>
-            <circle cx="48" cy="44" r="7" fill="#f92672"/>
-            <line x1="32" y1="27" x2="16" y2="37" stroke="#a6e22e" stroke-width="2"/>
-            <line x1="32" y1="27" x2="48" y2="37" stroke="#a6e22e" stroke-width="2"/>
-          </svg>
+          <svg class="welcome-logo" width="76" height="76" viewBox="0 0 64 64"><use href="#logo-den"/></svg>
           <h1>Welcome to GitDenn</h1>
           <p>Clone a remote repository or open an existing local one to get started.</p>
           <div class="welcome-actions">
