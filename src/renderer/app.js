@@ -125,6 +125,16 @@ function bindEvents() {
 
   // Working-directory staging/commit actions (delegated, bound once)
   on('detail-diff', 'click', '[data-act]', el => handleWipAction(el.dataset.act, el.dataset.path));
+  // Clicking a file row (but not its stage/unstage button) opens its quick view
+  on('detail-diff', 'click', '.wd-file', (el, e) => {
+    if (e.target.closest('[data-act]')) return;
+    state.wipViewFile = {
+      file: el.dataset.path,
+      staged: el.dataset.staged === 'true',
+      untracked: el.dataset.untracked === 'true',
+    };
+    renderWipDetail();
+  });
   $('detail-diff').addEventListener('input', e => {
     if (e.target.id === 'commit-msg-input') state.commitMsg = e.target.value;
   });
@@ -993,6 +1003,7 @@ async function selectCommit(sha, idx) {
   detailContent.style.display = 'block';
 
   if (commit.isWip) {
+    state.wipViewFile = null; // selecting the node shows the staging list
     await renderWipDetail();
     return;
   }
@@ -1031,6 +1042,9 @@ async function renderWipDetail() {
   $('detail-sha').textContent = '';
   $('detail-refs').innerHTML = '';
 
+  // Quick view: a single file's diff, opened by clicking a file row.
+  if (state.wipViewFile) return renderFileQuickView();
+
   const res = await window.gitApp.status(state.repoPath);
   const files = res.success ? res.files : [];
   const staged = files.filter(f => f.staged);
@@ -1041,7 +1055,7 @@ async function renderWipDetail() {
     const label = statusLabel(kind === 'staged' ? f.index : f.working_dir, f.untracked && kind !== 'staged');
     const act = kind === 'staged' ? 'unstage' : 'stage';
     return html`
-      <div class="wd-file">
+      <div class="wd-file" data-path="${f.path}" data-staged="${kind === 'staged'}" data-untracked="${!!f.untracked}">
         <span class="wd-status wd-${label.cls}">${label.ch}</span>
         <span class="wd-path" title="${f.path}">${f.path}</span>
         <button class="wd-act" data-act="${act}" data-path="${f.path}" title="${act}">
@@ -1076,6 +1090,42 @@ async function renderWipDetail() {
   `);
 }
 
+// Quick view: a single file's unified diff inside the detail panel.
+async function renderFileQuickView() {
+  const { file, staged, untracked } = state.wipViewFile;
+  $('detail-subject').textContent = file.split('/').pop();
+  const header = html`
+    <div class="qv-head">
+      <button class="wd-bulk" data-act="wip-back">← Back</button>
+      <span class="qv-file" title="${file}">${file}</span>
+    </div>`;
+  render('detail-diff', html`<div class="wd">${header}<div class="qv-loading">Loading diff…</div></div>`);
+
+  const res = await window.gitApp.fileDiff(state.repoPath, file, staged, untracked);
+  // Guard against a stale response if the user navigated away meanwhile.
+  if (!state.wipViewFile || state.wipViewFile.file !== file) return;
+  render('detail-diff', html`
+    <div class="wd">
+      ${header}
+      <div class="qv-diff">${raw(renderUnifiedDiff(res.success ? res.diff : ''))}</div>
+    </div>
+  `);
+}
+
+// Render a unified diff string as coloured lines (drops the git file headers).
+function renderUnifiedDiff(text) {
+  if (!text || !text.trim()) return '<div class="wd-empty">No textual changes</div>';
+  const skip = /^(diff --git|index |--- |\+\+\+ |new file|deleted file|old mode|new mode|similarity |rename |copy |Binary files)/;
+  return text.split('\n').map(line => {
+    if (skip.test(line)) return '';
+    let cls = 'dl-ctx';
+    if (line.startsWith('@@')) cls = 'dl-hunk';
+    else if (line.startsWith('+')) cls = 'dl-add';
+    else if (line.startsWith('-')) cls = 'dl-del';
+    return `<div class="dl ${cls}">${escHtml(line || ' ')}</div>`;
+  }).join('');
+}
+
 // Re-fetch status and refresh the WIP detail + toolbar chips (no graph change).
 async function refreshStatus() {
   const res = await window.gitApp.status(state.repoPath);
@@ -1089,6 +1139,7 @@ async function refreshStatus() {
 async function handleWipAction(act, path) {
   if (!state.repoPath) return;
   if (act === 'commit') return doCommit();
+  if (act === 'wip-back') { state.wipViewFile = null; return renderWipDetail(); }
   if (act === 'stage')        await window.gitApp.stage(state.repoPath, [path]);
   else if (act === 'unstage') await window.gitApp.unstage(state.repoPath, [path]);
   else if (act === 'stage-all')   await window.gitApp.stageAll(state.repoPath);

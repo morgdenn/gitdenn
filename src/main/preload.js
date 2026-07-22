@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('gitApp', {
   checkoutRemote: (repoPath, remoteBranch) => ipcRenderer.invoke('git:checkoutRemote', { repoPath, remoteBranch }),
   createBranch: (repoPath, name) => ipcRenderer.invoke('git:createBranch', { repoPath, name }),
   status: (repoPath) => ipcRenderer.invoke('git:status', { repoPath }),
+  fileDiff: (repoPath, file, staged, untracked) => ipcRenderer.invoke('git:fileDiff', { repoPath, file, staged, untracked }),
   stage: (repoPath, paths) => ipcRenderer.invoke('git:stage', { repoPath, paths }),
   unstage: (repoPath, paths) => ipcRenderer.invoke('git:unstage', { repoPath, paths }),
   stageAll: (repoPath) => ipcRenderer.invoke('git:stageAll', { repoPath }),

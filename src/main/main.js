@@ -232,6 +232,29 @@ ipcMain.handle('git:status', async (event, { repoPath }) => {
   }
 });
 
+// Unified diff for a single working-directory file
+ipcMain.handle('git:fileDiff', async (event, { repoPath, file, staged, untracked }) => {
+  try {
+    const git = simpleGit(repoPath);
+    let diff;
+    if (staged) {
+      diff = await git.diff(['--cached', '--', file]);
+    } else if (untracked) {
+      // Untracked files have no git diff — show their contents as all additions.
+      let content = '';
+      try { content = fs.readFileSync(path.join(repoPath, file), 'utf8'); } catch (e) {}
+      const lines = content.split('\n');
+      if (lines.length && lines[lines.length - 1] === '') lines.pop();
+      diff = '@@ new file @@\n' + lines.map(l => '+' + l).join('\n');
+    } else {
+      diff = await git.diff(['--', file]);
+    }
+    return { success: true, diff };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Stage the given paths (git add)
 ipcMain.handle('git:stage', async (event, { repoPath, paths }) => {
   try {

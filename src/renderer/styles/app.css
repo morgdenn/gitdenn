@@ -867,6 +867,7 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   padding: 3px 4px;
   border-radius: 4px;
   font-size: 12px;
+  cursor: pointer;
 }
 .wd-file:hover { background: var(--bg-hover); }
 .wd-status {
@@ -927,6 +928,35 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 #commit-msg-input:focus { border-color: var(--accent); }
 #commit-btn { width: 100%; }
 #commit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Quick view: single-file unified diff */
+.qv-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.qv-file {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+.qv-loading { font-size: 11px; color: var(--text-muted); padding: 8px 2px; }
+.qv-diff {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow-x: auto;
+  padding: 4px 0;
+}
+.dl { white-space: pre; padding: 0 8px; }
+.dl-ctx  { color: var(--text-sec); }
+.dl-add  { background: rgba(166,226,46,0.13); color: var(--text-pri); }
+.dl-del  { background: rgba(249,38,114,0.13); color: var(--text-pri); }
+.dl-hunk { background: var(--bg-hover); color: var(--text-muted); }
 
 /* ─── Repo view wrapper ──────────────────────────────────────────────────────── */
 #repo-view {
