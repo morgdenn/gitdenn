@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeImage } = require('electron');
 const path = require('path');
 const simpleGit = require('simple-git');
 const fs = require('fs');
@@ -341,6 +341,17 @@ ipcMain.handle('git:commit', async (event, { repoPath, message }) => {
   try {
     const result = await simpleGit(repoPath).commit(message);
     return { success: true, commit: result.commit };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Set the window/taskbar icon from a PNG data URL (rendered by the renderer)
+ipcMain.handle('window:setIcon', (event, { dataUrl }) => {
+  try {
+    const img = nativeImage.createFromDataURL(dataUrl);
+    if (mainWindow && !img.isEmpty()) mainWindow.setIcon(img);
+    return { success: true };
   } catch (err) {
     return { success: false, error: err.message };
   }

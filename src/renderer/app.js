@@ -57,7 +57,48 @@ function textOn(hex) {
 window.addEventListener('DOMContentLoaded', () => {
   renderRecentRepos();
   bindEvents();
+  setAppIcon();
 });
+
+// Draw the den logo (bear at a round cave) with canvas primitives — matches the
+// inline SVG in index.html — and set it as the window/taskbar icon.
+function drawDenLogo(ctx, size) {
+  const s = size / 64;
+  ctx.save();
+  ctx.scale(s, s);
+  const circle = (x, y, r, fill) => {
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill();
+  };
+  const ellipse = (x, y, rx, ry, fill, alpha) => {
+    ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    ctx.globalAlpha = alpha == null ? 1 : alpha; ctx.fillStyle = fill; ctx.fill(); ctx.globalAlpha = 1;
+  };
+  circle(32, 31, 28, '#45463c');                                  // stone rim
+  ctx.beginPath(); ctx.arc(32, 31, 28, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(166,226,46,0.55)'; ctx.lineWidth = 2; ctx.stroke(); // accent ring
+  circle(32, 33, 22, '#141509');                                  // dark opening
+  ellipse(32, 60, 27, 8, '#5f8a29');                              // grassy ground
+  ellipse(32, 46, 14, 13, '#9c7248');                             // body
+  ellipse(24, 54, 4.5, 3.3, '#7d5a38');                           // paws
+  ellipse(40, 54, 4.5, 3.3, '#7d5a38');
+  ellipse(32, 48, 8, 8, '#c9a06f', 0.5);                          // belly
+  circle(23, 23, 4.5, '#8a6440'); circle(41, 23, 4.5, '#8a6440'); // ears
+  circle(23, 23, 2, '#c9a06f');   circle(41, 23, 2, '#c9a06f');
+  circle(32, 29, 11, '#9c7248');                                  // head
+  ellipse(32, 33, 6, 4.6, '#ecd8b6');                             // muzzle
+  ellipse(32, 30.5, 2, 1.4, '#2b2a25');                           // nose
+  circle(27.5, 27, 1.6, '#2b2a25'); circle(36.5, 27, 1.6, '#2b2a25'); // eyes
+  ctx.restore();
+}
+
+function setAppIcon() {
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    drawDenLogo(c.getContext('2d'), 256);
+    window.gitApp.setIcon(c.toDataURL('image/png'));
+  } catch (e) { /* non-fatal */ }
+}
 
 function bindEvents() {
   $('btn-clone').addEventListener('click', showCloneModal);

@@ -3,14 +3,36 @@
 Built with Electron + simple-git. Visualizes commit history as an interactive branch graph.
 
 ## Features
-- **Clone** any public or private Git repo via URL
+
+**Repository**
+- **Clone** any public or private Git repo via URL (with progress)
 - **Open** existing local repositories
-- **Commit graph** with branching/merging lane visualisation (canvas-rendered)
-- **Commit detail panel** — author, date, SHA, ref badges, file diff stats
-- **Branch sidebar** showing local and remote branches
-- **Fetch** from all remotes
 - **Recent repos** list (persisted in localStorage)
-- **Keyboard shortcuts**: `Esc` closes modal, `Cmd/Ctrl+R` refreshes
+- **Open in GitHub** (when the remote is on GitHub) and **Open in VS Code**
+
+**Commit graph**
+- Branching/merging lane visualisation on an HTML Canvas, ordered newest-first
+- Commit nodes rendered as **author-initial avatars**, coloured by lane
+- **Right-angle (orthogonal) edge routing** with rounded corners
+- Per-lane row tint; virtualised painting (only visible rows)
+- **Commit detail panel** — author, date, SHA, ref badges, file diff stats
+
+**Branches**
+- Sidebar **branch tree** grouped by `/`, split into Local / Remote (resizable divider)
+- **Ahead/behind** indicators vs. upstream (`N↑` / `N↓`)
+- Double-click a remote branch to check it out locally; double-click a local branch to switch
+- **Create a branch**, **fetch**, **pull**, and **push** (auto-sets upstream) from the toolbar
+
+**Working directory (uncommitted changes)**
+- A **WIP node** at the top of the graph for uncommitted changes, refreshed automatically
+- Detail panel lists **Changes** and **Staged** files; stage/unstage individually or all
+- **Commit** staged changes with a message box
+- **Quick-view diff** — click a file to see its unified diff, with **Stage/Unstage** and **Discard** (split button)
+
+**UI**
+- Monokai-inspired dark theme
+- Resizable, collapsible sidebar panels; resizable commit-list columns
+- **Keyboard shortcuts**: `Esc` closes modals, `Cmd/Ctrl+R` refreshes, `Cmd/Ctrl+Shift+E` opens VS Code
 
 ## Setup
 
@@ -24,7 +46,8 @@ npm install
 # 3. Run the app
 npm start
 
-# Run in dev mode (opens DevTools automatically)
+# Run in dev mode (hot reload: renderer edits reload the page,
+# main-process edits restart the app)
 npm run dev
 ```
 
@@ -69,15 +92,17 @@ Local Git / Remote repos
 The **graph layout engine** in `app.js` implements a lane-allocation algorithm:
 - Assigns each commit a horizontal lane (column)
 - Tracks open lanes that expect a parent commit
-- Draws bezier curves for branch/merge lines on an HTML Canvas
+- Draws right-angle (orthogonal) connectors with rounded corners on an HTML Canvas
 - Only paints visible rows (virtual scrolling) for performance
 
 ## Next Steps / Roadmap
-- [ ] Stage/unstage files
-- [ ] Commit from UI
-- [ ] Push / pull
-- [ ] Full diff viewer (line-level +/-)
-- [ ] Branch create / delete / rename
+- [x] Stage/unstage files
+- [x] Commit from UI
+- [x] Push / pull
+- [x] Quick-view file diff (unified) with stage/discard
+- [x] Create branch
+- [ ] Side-by-side diff opened in tabs
+- [ ] Branch delete / rename
 - [ ] Stash management
 - [ ] Search commits
 - [ ] Drag-and-drop rebase
