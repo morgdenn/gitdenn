@@ -6,6 +6,12 @@
 
 <p align="center">Built with Electron + simple-git. Visualizes commit history as an interactive branch graph.</p>
 
+<p align="center">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-a6e22e.svg"></a>
+  <img alt="Electron 28" src="https://img.shields.io/badge/Electron-28-66d9ef.svg">
+  <img alt="Vanilla JS — no build step" src="https://img.shields.io/badge/Vanilla%20JS-no%20build%20step-f92672.svg">
+</p>
+
 ## Features
 
 **Repository**
@@ -110,3 +116,13 @@ The **graph layout engine** in `app.js` implements a lane-allocation algorithm:
 - [ ] Stash management
 - [ ] Search commits
 - [ ] Drag-and-drop rebase
+
+## Contributing
+
+Contributions are welcome! Please read **[CONTRIBUTING.md](CONTRIBUTING.md)**
+and **[AGENTS.md](AGENTS.md)** first — GitDenn is intentionally buildless
+(vanilla JS, no bundler, no framework), and the guides explain the conventions.
+
+## License
+
+[MIT](LICENSE) © Morgan Denn
