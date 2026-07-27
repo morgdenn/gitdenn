@@ -830,18 +830,38 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 .diff-stat-line {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 2px 0;
   color: var(--text-sec);
 }
-.diff-tree-dir {
+.diff-folder-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+  cursor: pointer;
+  list-style: none;
   color: var(--text-muted);
-  font-size: 10px;
-  padding: 1px 0;
-  font-family: var(--font-mono);
+  font-size: 11px;
+  user-select: none;
 }
+.diff-folder-label::-webkit-details-marker { display: none; }
+.diff-folder-label:hover { color: var(--text-sec); }
+.diff-folder-label .tree-icon { color: var(--amber); }
+.diff-tree-children { padding-left: 14px; }
 .diff-tree-file {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   color: var(--text-sec);
   font-weight: 500;
+}
+.diff-tree-file .tree-icon { color: var(--text-muted); }
+.diff-tree-summary {
+  color: var(--text-muted);
+  font-size: 10px;
+  margin-bottom: 6px;
+  font-family: var(--font);
 }
 
 /* ─── Working directory (WIP) staging UI ─────────────────────────────────────── */

@@ -619,6 +619,10 @@ const ICON_BRANCH = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" heigh
 const ICON_FOLDER = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true">
   <path d="M1.5 4a1 1 0 0 1 1-1h3.1l1.3 1.6h6.6a1 1 0 0 1 1 1v6.4a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
 </svg>`;
+const ICON_FILE = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true">
+  <path d="M3 2h6.2L13 5.8V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M9 2v4h4" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+</svg>`;
 const ICON_CHECK = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
   <rect x="1.5" y="1.5" width="13" height="13" rx="3.5" style="fill:var(--green)"/>
   <path d="M4.6 8.2l2.1 2.2 4.7-4.9" fill="none" style="stroke:var(--bg-deep)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1286,35 +1290,41 @@ function renderDiff(stat) {
     return { node, name };
   }
 
-  function renderNode(node, name, depth) {
-    let out = '';
-    const indent = depth * 14;
-    if (name !== null) {
-      if (node.file !== null) {
-        // File leaf
-        const bars = `<span class="diff-stat-add">${'+'.repeat(node.file.adds)}</span><span class="diff-stat-del">${'-'.repeat(node.file.dels)}</span>`;
-        out += `<div class="diff-stat-line" style="padding-left:${indent}px">
-          <span class="diff-tree-file">${escHtml(name)}</span>
+  function renderNode(node, name) {
+    const sortedKeys = Object.keys(node.children).sort();
+    const children = sortedKeys.map(key => {
+      const { node: cn, name: cn_name } = collapse(node.children[key], key);
+      return renderNode(cn, cn_name);
+    });
+
+    if (name === null) {
+      // Root — just emit children
+      return html`<div class="diff-tree-children">${children}</div>`;
+    }
+
+    if (node.file !== null) {
+      // File leaf
+      const bars = html`<span class="diff-stat-add">${'+'.repeat(node.file.adds)}</span><span class="diff-stat-del">${'-'.repeat(node.file.dels)}</span>`;
+      return html`
+        <div class="diff-stat-line">
+          <span class="diff-tree-file">${raw(ICON_FILE)}${name}</span>
           <span>${bars}</span>
         </div>`;
-      } else {
-        // Directory node
-        out += `<div class="diff-tree-dir" style="padding-left:${indent}px">${escHtml(name)}/</div>`;
-      }
     }
-    const childDepth = name === null ? 0 : depth + 1;
-    for (const key of Object.keys(node.children).sort()) {
-      const { node: cn, name: cn_name } = collapse(node.children[key], key);
-      out += renderNode(cn, cn_name, childDepth);
-    }
-    return out;
+
+    // Directory folder — collapsible via <details> like the branch tree
+    return html`
+      <details class="diff-folder" open>
+        <summary class="diff-folder-label">${raw(ICON_FOLDER)}${name}</summary>
+        <div class="diff-tree-children">${children}</div>
+      </details>`;
   }
 
-  let html = renderNode(root, null, 0);
-  if (summary) {
-    html += `<div style="color:var(--text-muted);font-size:10px;margin-top:6px;font-family:var(--font)">${escHtml(summary)}</div>`;
-  }
-  el.innerHTML = html;
+  const treeHtml = renderNode(root, null);
+  const sumHtml = summary
+    ? html`<div class="diff-tree-summary">${summary}</div>`
+    : '';
+  render(el, html`${sumHtml}${treeHtml}`);
 }
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
