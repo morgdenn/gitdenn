@@ -326,6 +326,22 @@ ipcMain.handle('git:push', async (event, { repoPath }) => {
   }
 });
 
+ipcMain.handle('git:pushForce', async (event, { repoPath }) => {
+  try {
+    const git = simpleGit(repoPath);
+    const status = await git.status();
+    const branch = status.current;
+    if (status.tracking) {
+      await git.push(['--force-with-lease']);
+    } else {
+      await git.push(['-u', 'origin', branch, '--force-with-lease']);
+    }
+    return { success: true, branch };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Pull the current branch from its upstream
 ipcMain.handle('git:pull', async (event, { repoPath }) => {
   try {

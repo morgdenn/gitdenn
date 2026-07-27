@@ -372,6 +372,20 @@ body.row-resizing { cursor: row-resize; user-select: none; }
 .primary-btn:hover { background: var(--accent-lt); }
 .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.danger-btn {
+  padding: 8px 20px;
+  background: var(--red);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 500;
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.danger-btn:hover { opacity: 0.85; }
+
 .secondary-btn {
   padding: 8px 20px;
   background: transparent;

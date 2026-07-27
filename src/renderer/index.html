@@ -167,6 +167,25 @@
         </div>
       </div>
 
+      <!-- Push modal -->
+      <div id="push-modal" class="modal-overlay" style="display:none;">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>Push</h2>
+            <button class="modal-close" id="push-cancel">✕</button>
+          </div>
+          <div class="modal-body">
+            <p style="margin:0 0 4px;color:var(--text-sec);font-size:13px;">Push commits to the remote?</p>
+            <p id="push-modal-note" style="margin:0;color:var(--text-muted);font-size:11px;"></p>
+          </div>
+          <div class="modal-footer">
+            <button class="secondary-btn" id="push-cancel-2">Cancel</button>
+            <button class="primary-btn" id="push-confirm">Push</button>
+            <button class="danger-btn" id="push-force-confirm">Force push</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Repo view -->
       <div id="repo-view" style="display:none;">
         <div id="toolbar">

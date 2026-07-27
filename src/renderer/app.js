@@ -13,6 +13,7 @@ const $ = id => document.getElementById(id);
 const welcomeScreen   = $('welcome-screen');
 const cloneModal      = $('clone-modal');
 const branchModal     = $('branch-modal');
+const pushModal       = $('push-modal');
 const repoView        = $('repo-view');
 const commitRows      = $('commit-rows');
 const graphCanvas     = $('graph-canvas');
@@ -115,7 +116,7 @@ function bindEvents() {
 
   $('btn-branch').addEventListener('click', showBranchModal);
   $('btn-pull').addEventListener('click', doPull);
-  $('btn-push').addEventListener('click', doPush);
+  $('btn-push').addEventListener('click', showPushModal);
   $('btn-github').addEventListener('click', () => {
     if (state.githubUrl) window.gitApp.openExternal(state.githubUrl);
   });
@@ -125,6 +126,10 @@ function bindEvents() {
   $('branch-cancel').addEventListener('click', hideBranchModal);
   $('branch-cancel-2').addEventListener('click', hideBranchModal);
   $('branch-confirm').addEventListener('click', doCreateBranch);
+  $('push-cancel').addEventListener('click', hidePushModal);
+  $('push-cancel-2').addEventListener('click', hidePushModal);
+  $('push-confirm').addEventListener('click', () => { hidePushModal(); doPush(false); });
+  $('push-force-confirm').addEventListener('click', () => { hidePushModal(); doPush(true); });
   $('branch-name').addEventListener('keydown', e => {
     if (e.key === 'Enter') doCreateBranch();
   });
@@ -142,7 +147,7 @@ function bindEvents() {
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
+    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'r') loadRepo(state.repoPath);
     // Ctrl/Cmd+Shift+E → open the repo in VS Code
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'e' || e.key === 'E')) {
@@ -414,6 +419,19 @@ function showBranchModal() {
 function hideBranchModal() {
   branchModal.style.display = 'none';
   $('branch-name').value = '';
+}
+
+function showPushModal() {
+  if (!state.repoPath) return;
+  const note = $('push-modal-note');
+  const ahead = (state.tracking || {})[state.currentBranch];
+  note.textContent = ahead && ahead.ahead
+    ? `${ahead.ahead} commit${ahead.ahead === 1 ? '' : 's'} ahead of remote`
+    : '';
+  pushModal.style.display = 'flex';
+}
+function hidePushModal() {
+  pushModal.style.display = 'none';
 }
 
 async function doCreateBranch() {
@@ -1422,20 +1440,22 @@ async function doPull() {
   await loadRepo(state.repoPath);
 }
 
-async function doPush() {
+async function doPush(force = false) {
   if (!state.repoPath) return;
   const btn = $('btn-push');
   const original = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<span class="btn-spinner"></span> Pushing…';
-  const result = await window.gitApp.push(state.repoPath);
+  const result = force
+    ? await window.gitApp.pushForce(state.repoPath)
+    : await window.gitApp.push(state.repoPath);
   btn.disabled = false;
   btn.innerHTML = original;
   if (!result.success) {
     alert(`Push failed: ${result.error}`);
     return;
   }
-  showToast(`Pushed ${result.branch}`);
+  showToast(force ? `Force pushed ${result.branch}` : `Pushed ${result.branch}`);
   await loadRepo(state.repoPath);
 }
 
