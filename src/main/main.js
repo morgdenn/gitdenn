@@ -361,6 +361,17 @@ ipcMain.handle('git:pullRebase', async (event, { repoPath }) => {
   }
 });
 
+ipcMain.handle('git:rebaseOnto', async (event, { repoPath, branch }) => {
+  try {
+    const git = simpleGit(repoPath);
+    await git.fetch('origin', branch);
+    await git.rebase([`origin/${branch}`]);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Commit the staged changes
 ipcMain.handle('git:commit', async (event, { repoPath, message }) => {
   try {

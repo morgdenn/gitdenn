@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('gitApp', {
   pushForce:  (repoPath) => ipcRenderer.invoke('git:pushForce', { repoPath }),
   pull:        (repoPath) => ipcRenderer.invoke('git:pull',       { repoPath }),
   pullRebase:  (repoPath) => ipcRenderer.invoke('git:pullRebase', { repoPath }),
+  rebaseOnto:  (repoPath, branch) => ipcRenderer.invoke('git:rebaseOnto', { repoPath, branch }),
   setIcon: (dataUrl) => ipcRenderer.invoke('window:setIcon', { dataUrl }),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', { url }),
   openInVscode: (repoPath) => ipcRenderer.invoke('shell:openInVscode', { repoPath }),

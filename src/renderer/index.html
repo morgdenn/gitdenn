@@ -186,6 +186,25 @@
         </div>
       </div>
 
+      <!-- Rebase modal -->
+      <div id="rebase-modal" class="modal-overlay" style="display:none;">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>Rebase onto branch</h2>
+            <button class="modal-close" id="rebase-cancel">✕</button>
+          </div>
+          <div class="modal-body">
+            <label>Target branch</label>
+            <select id="rebase-branch-select" style="width:100%;margin-top:6px;background:var(--bg-deep);border:1px solid var(--border-lt);border-radius:6px;color:var(--text-pri);font-family:var(--font);font-size:13px;padding:7px 8px;outline:none;"></select>
+            <p style="margin:8px 0 0;color:var(--text-muted);font-size:11px;">Fetches the remote then rebases the current branch on top of the selected branch.</p>
+          </div>
+          <div class="modal-footer">
+            <button class="secondary-btn" id="rebase-cancel-2">Cancel</button>
+            <button class="primary-btn" id="rebase-confirm">Rebase</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Repo view -->
       <div id="repo-view" style="display:none;">
         <div id="toolbar">

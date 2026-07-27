@@ -14,6 +14,7 @@ const welcomeScreen   = $('welcome-screen');
 const cloneModal      = $('clone-modal');
 const branchModal     = $('branch-modal');
 const pushModal       = $('push-modal');
+const rebaseModal     = $('rebase-modal');
 const repoView        = $('repo-view');
 const commitRows      = $('commit-rows');
 const graphCanvas     = $('graph-canvas');
@@ -116,7 +117,7 @@ function bindEvents() {
 
   $('btn-branch').addEventListener('click', showBranchModal);
   $('btn-pull').addEventListener('click', doPull);
-  $('btn-rebase').addEventListener('click', doRebase);
+  $('btn-rebase').addEventListener('click', showRebaseModal);
   $('btn-push').addEventListener('click', showPushModal);
   $('btn-github').addEventListener('click', () => {
     if (state.githubUrl) window.gitApp.openExternal(state.githubUrl);
@@ -131,6 +132,9 @@ function bindEvents() {
   $('push-cancel-2').addEventListener('click', hidePushModal);
   $('push-confirm').addEventListener('click', () => { hidePushModal(); doPush(false); });
   $('push-force-confirm').addEventListener('click', () => { hidePushModal(); doPush(true); });
+  $('rebase-cancel').addEventListener('click', hideRebaseModal);
+  $('rebase-cancel-2').addEventListener('click', hideRebaseModal);
+  $('rebase-confirm').addEventListener('click', () => { const b = $('rebase-branch-select').value; hideRebaseModal(); doRebaseOnto(b); });
   $('branch-name').addEventListener('keydown', e => {
     if (e.key === 'Enter') doCreateBranch();
   });
@@ -148,7 +152,7 @@ function bindEvents() {
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
+    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); hideRebaseModal(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'r') loadRepo(state.repoPath);
     // Ctrl/Cmd+Shift+E → open the repo in VS Code
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'e' || e.key === 'E')) {
@@ -433,6 +437,25 @@ function showPushModal() {
 }
 function hidePushModal() {
   pushModal.style.display = 'none';
+}
+
+function showRebaseModal() {
+  if (!state.repoPath) return;
+  const sel = $('rebase-branch-select');
+  const locals = (state.branches || []).filter(b => !b.startsWith('remotes/'));
+  // Default to detected main/master, falling back to first branch that isn't current
+  const preferred = ['main', 'master', 'develop', 'dev'];
+  const def = preferred.find(b => locals.includes(b) && b !== state.currentBranch)
+    || locals.find(b => b !== state.currentBranch)
+    || locals[0];
+  sel.innerHTML = locals
+    .filter(b => b !== state.currentBranch)
+    .map(b => `<option value="${b}"${b === def ? ' selected' : ''}>${b}</option>`)
+    .join('');
+  rebaseModal.style.display = 'flex';
+}
+function hideRebaseModal() {
+  rebaseModal.style.display = 'none';
 }
 
 async function doCreateBranch() {
@@ -1455,6 +1478,23 @@ async function doRebase() {
     return;
   }
   showToast('Updated with rebase');
+  await loadRepo(state.repoPath);
+}
+
+async function doRebaseOnto(branch) {
+  if (!state.repoPath) return;
+  const btn = $('btn-rebase');
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spinner"></span> Rebasing…';
+  const result = await window.gitApp.rebaseOnto(state.repoPath, branch);
+  btn.disabled = false;
+  btn.innerHTML = original;
+  if (!result.success) {
+    alert(`Rebase failed: ${result.error}`);
+    return;
+  }
+  showToast(`Rebased onto ${branch}`);
   await loadRepo(state.repoPath);
 }
 
