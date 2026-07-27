@@ -793,7 +793,7 @@ function showBranchCtxMenu(x, y, branch, isCurrent) {
   const del = $('ctx-delete-branch');
   del.disabled = isCurrent;
   del.title = isCurrent ? 'Cannot delete the currently checked-out branch' : '';
-  del.onclick = () => { hideBranchCtxMenu(); doDeleteBranch(_ctxBranch); };
+  del.onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); doDeleteBranch(b); };
   menu.style.display = 'block';
   // Clamp to viewport
   const vw = window.innerWidth, vh = window.innerHeight;
