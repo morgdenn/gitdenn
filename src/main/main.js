@@ -346,6 +346,17 @@ ipcMain.handle('git:commit', async (event, { repoPath, message }) => {
   }
 });
 
+ipcMain.handle('git:commitAmend', async (event, { repoPath, message }) => {
+  try {
+    const git = simpleGit(repoPath);
+    const args = message ? ['--amend', '-m', message] : ['--amend', '--no-edit'];
+    await git.raw(['commit', ...args]);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Set the window/taskbar icon from a PNG data URL (rendered by the renderer)
 ipcMain.handle('window:setIcon', (event, { dataUrl }) => {
   try {

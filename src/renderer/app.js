@@ -134,9 +134,15 @@ function bindEvents() {
   initBranchSplit();
   initDetailResize();
 
+  // Close the commit dropdown when clicking outside it
+  document.addEventListener('click', e => {
+    const dd = $('commit-dropdown');
+    if (dd && !dd.hidden && !e.target.closest('.commit-split-btn')) dd.hidden = true;
+  });
+
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); }
+    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'r') loadRepo(state.repoPath);
     // Ctrl/Cmd+Shift+E → open the repo in VS Code
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'e' || e.key === 'E')) {
@@ -1162,9 +1168,15 @@ async function renderWipDetail() {
       </div>
       <div class="wd-commit">
         <textarea id="commit-msg-input" placeholder="Commit message" rows="3">${state.commitMsg || ''}</textarea>
-        <button class="primary-btn" id="commit-btn" data-act="commit" ${staged.length ? '' : raw('disabled')}>
-          Commit ${staged.length} file${staged.length === 1 ? '' : 's'}
-        </button>
+        <div class="commit-split-btn${staged.length ? '' : ' disabled'}">
+          <button class="primary-btn commit-main-btn" data-act="commit" ${staged.length ? '' : raw('disabled')}>
+            Commit ${staged.length} file${staged.length === 1 ? '' : 's'}
+          </button>
+          <button class="primary-btn commit-chevron-btn" data-act="commit-menu" ${staged.length ? '' : raw('disabled')} aria-label="More commit options">&#8964;</button>
+          <div class="commit-dropdown" id="commit-dropdown" hidden>
+            <button class="commit-dropdown-item" data-act="amend">Amend previous commit</button>
+          </div>
+        </div>
       </div>
     </div>
   `);
@@ -1228,6 +1240,12 @@ async function refreshStatus() {
 async function handleWipAction(act, path) {
   if (!state.repoPath) return;
   if (act === 'commit') return doCommit();
+  if (act === 'amend')  return doAmend();
+  if (act === 'commit-menu') {
+    const dd = $('commit-dropdown');
+    if (dd) dd.hidden = !dd.hidden;
+    return;
+  }
   if (act === 'wip-back') { state.wipViewFile = null; return renderWipDetail(); }
   if (act === 'view-menu') { const m = $('qv-menu'); if (m) m.hidden = !m.hidden; return; }
   if (act === 'discard') return discardViewedFile();
@@ -1258,6 +1276,18 @@ async function doCommit() {
   detailContent.style.display = 'none';
   detailPlaceholder.style.display = 'flex';
   showToast('Committed');
+}
+
+async function doAmend() {
+  const msg = (state.commitMsg || '').trim();
+  const res = await window.gitApp.commitAmend(state.repoPath, msg || null);
+  if (!res.success) return alert(`Amend failed: ${res.error}`);
+  state.commitMsg = '';
+  state.selectedSha = null;
+  await loadRepo(state.repoPath);
+  detailContent.style.display = 'none';
+  detailPlaceholder.style.display = 'flex';
+  showToast('Amended previous commit');
 }
 
 // Discard all changes to the currently-viewed file (destructive → confirm).
