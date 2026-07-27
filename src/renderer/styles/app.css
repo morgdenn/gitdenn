@@ -742,9 +742,19 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 }
 
 /* ─── Detail Panel ──────────────────────────────────────────────────────────── */
+#detail-resizer {
+  width: 5px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  border-left: 1px solid var(--border);
+  transition: background 0.1s;
+}
+#detail-resizer:hover { background: var(--accent); }
+
 #detail-panel {
   width: var(--detail-w);
-  min-width: var(--detail-w);
+  min-width: 220px;
   background: var(--bg-panel);
   display: flex;
   flex-direction: column;

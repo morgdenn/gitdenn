@@ -132,6 +132,7 @@ function bindEvents() {
   initColumnResizers();
   initSidebarPanels();
   initBranchSplit();
+  initDetailResize();
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
@@ -291,6 +292,37 @@ function startPanelResize(e, conf) {
 
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', onUp);
+}
+
+function initDetailResize() {
+  const rz = $('detail-resizer');
+  if (!rz) return;
+  rz.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const rootStyle = document.documentElement.style;
+    const startX = e.clientX;
+    const startW = parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue('--detail-w'),
+      10
+    );
+
+    document.body.classList.add('col-resizing');
+
+    const onMove = ev => {
+      // Left-edge drag: moving left increases width
+      const width = Math.max(220, startW - (ev.clientX - startX));
+      rootStyle.setProperty('--detail-w', width + 'px');
+    };
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.classList.remove('col-resizing');
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
 }
 
 // Draggable divider between the Local and Remote branch lists — sets the Local
