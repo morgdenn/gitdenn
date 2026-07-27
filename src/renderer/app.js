@@ -152,7 +152,7 @@ function bindEvents() {
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); hideRebaseModal(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
+    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); hideRebaseModal(); hideBranchCtxMenu(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'r') loadRepo(state.repoPath);
     // Ctrl/Cmd+Shift+E → open the repo in VS Code
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'e' || e.key === 'E')) {
@@ -180,6 +180,17 @@ function bindEvents() {
 
   // Double-click a local branch → switch to it
   on('local-branches-list', 'dblclick', '.branch-item', el => checkoutLocalBranch(el.dataset.branch));
+
+  // Right-click a local branch → context menu
+  on('local-branches-list', 'contextmenu', '.branch-item', (el, e) => {
+    e.preventDefault();
+    showBranchCtxMenu(e.clientX, e.clientY, el.dataset.branch, el.classList.contains('current'));
+  });
+
+  // Close context menu on any click outside it
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#branch-ctx-menu')) hideBranchCtxMenu();
+  });
 
   // Working-directory staging/commit actions (delegated, bound once)
   on('detail-diff', 'click', '[data-act]', el => handleWipAction(el.dataset.act, el.dataset.path));
@@ -772,6 +783,40 @@ async function checkoutLocalBranch(branch) {
   }
   await loadRepo(state.repoPath); // refresh branches, current branch, and graph
   showToast(`Switched to ${branch}`);
+}
+
+let _ctxBranch = null;
+
+function showBranchCtxMenu(x, y, branch, isCurrent) {
+  _ctxBranch = branch;
+  const menu = $('branch-ctx-menu');
+  const del = $('ctx-delete-branch');
+  del.disabled = isCurrent;
+  del.title = isCurrent ? 'Cannot delete the currently checked-out branch' : '';
+  del.onclick = () => { hideBranchCtxMenu(); doDeleteBranch(_ctxBranch); };
+  menu.style.display = 'block';
+  // Clamp to viewport
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const mw = 160, mh = 36;
+  menu.style.left = (x + mw > vw ? vw - mw - 4 : x) + 'px';
+  menu.style.top  = (y + mh > vh ? vh - mh - 4 : y) + 'px';
+}
+
+function hideBranchCtxMenu() {
+  $('branch-ctx-menu').style.display = 'none';
+  _ctxBranch = null;
+}
+
+async function doDeleteBranch(branch) {
+  if (!branch || !state.repoPath) return;
+  if (!confirm(`Delete branch "${branch}"?\n\nThis cannot be undone.`)) return;
+  const result = await window.gitApp.deleteBranch(state.repoPath, branch);
+  if (!result.success) {
+    alert(`Delete failed: ${result.error}`);
+    return;
+  }
+  showToast(`Deleted branch ${branch}`);
+  await loadRepo(state.repoPath);
 }
 
 function renderStatusChips(status) {

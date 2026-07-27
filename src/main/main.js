@@ -430,6 +430,17 @@ ipcMain.handle('shell:openInVscode', async (event, { repoPath }) => {
   });
 });
 
+// Delete a local branch (must not be currently checked out)
+ipcMain.handle('git:deleteBranch', async (event, { repoPath, name }) => {
+  try {
+    const git = simpleGit(repoPath);
+    await git.deleteLocalBranch(name, true); // true = force delete (-D)
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Create a new local branch off the current HEAD and switch to it
 ipcMain.handle('git:createBranch', async (event, { repoPath, name }) => {
   try {

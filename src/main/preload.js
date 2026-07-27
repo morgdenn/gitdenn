@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('gitApp', {
   checkout: (repoPath, ref) => ipcRenderer.invoke('git:checkout', { repoPath, ref }),
   checkoutRemote: (repoPath, remoteBranch) => ipcRenderer.invoke('git:checkoutRemote', { repoPath, remoteBranch }),
   createBranch: (repoPath, name) => ipcRenderer.invoke('git:createBranch', { repoPath, name }),
+  deleteBranch: (repoPath, name) => ipcRenderer.invoke('git:deleteBranch', { repoPath, name }),
   status: (repoPath) => ipcRenderer.invoke('git:status', { repoPath }),
   fileDiff: (repoPath, file, staged, untracked) => ipcRenderer.invoke('git:fileDiff', { repoPath, file, staged, untracked }),
   discard: (repoPath, file, untracked) => ipcRenderer.invoke('git:discard', { repoPath, file, untracked }),
