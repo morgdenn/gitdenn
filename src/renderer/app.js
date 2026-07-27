@@ -116,6 +116,7 @@ function bindEvents() {
 
   $('btn-branch').addEventListener('click', showBranchModal);
   $('btn-pull').addEventListener('click', doPull);
+  $('btn-rebase').addEventListener('click', doRebase);
   $('btn-push').addEventListener('click', showPushModal);
   $('btn-github').addEventListener('click', () => {
     if (state.githubUrl) window.gitApp.openExternal(state.githubUrl);
@@ -1437,6 +1438,23 @@ async function doPull() {
     return;
   }
   showToast('Pulled');
+  await loadRepo(state.repoPath);
+}
+
+async function doRebase() {
+  if (!state.repoPath) return;
+  const btn = $('btn-rebase');
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spinner"></span> Rebasing…';
+  const result = await window.gitApp.pullRebase(state.repoPath);
+  btn.disabled = false;
+  btn.innerHTML = original;
+  if (!result.success) {
+    alert(`Rebase failed: ${result.error}`);
+    return;
+  }
+  showToast('Updated with rebase');
   await loadRepo(state.repoPath);
 }
 

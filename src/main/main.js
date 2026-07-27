@@ -352,6 +352,15 @@ ipcMain.handle('git:pull', async (event, { repoPath }) => {
   }
 });
 
+ipcMain.handle('git:pullRebase', async (event, { repoPath }) => {
+  try {
+    await simpleGit(repoPath).pull(['--rebase']);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Commit the staged changes
 ipcMain.handle('git:commit', async (event, { repoPath, message }) => {
   try {
