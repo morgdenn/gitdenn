@@ -1241,28 +1241,80 @@ function renderDiff(stat) {
   const lines = stat.trim().split('\n');
   const el = $('detail-diff');
 
-  let html = '';
+  // Collect file entries and summary line
+  const files = [];
+  let summary = '';
   lines.forEach(line => {
-    line = escHtml(line);
     if (line.match(/^\s*\d+ file/)) {
-      html += `<div style="color:var(--text-sec);font-size:11px;margin-top:8px;font-family:var(--font)">${line}</div>`;
+      summary = line.trim();
     } else if (line.includes('|')) {
-      const [file, changes] = line.split('|');
-      const addDel = changes || '';
+      const pipeIdx = line.lastIndexOf('|');
+      const filePart = line.slice(0, pipeIdx).trim();
+      const addDel = line.slice(pipeIdx + 1);
       const adds = (addDel.match(/\+/g) || []).length;
       const dels = (addDel.match(/-/g) || []).length;
-      html += `
-        <div class="diff-stat-line">
-          <span class="diff-file-header">${file.trim()}</span>
-          <span><span class="diff-stat-add">${'+'.repeat(adds)}</span><span class="diff-stat-del">${'-'.repeat(dels)}</span></span>
-        </div>
-      `;
-    } else if (line.trim()) {
-      html += `<div style="color:var(--text-muted);font-size:10px;">${line}</div>`;
+      files.push({ path: filePart, adds, dels });
     }
   });
 
-  el.innerHTML = html || '<div style="color:var(--text-muted);font-family:var(--font);font-size:11px;">No changes</div>';
+  if (!files.length) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-family:var(--font);font-size:11px;">No changes</div>';
+    return;
+  }
+
+  // Build prefix tree: { children: {name -> node}, file: {adds,dels}|null }
+  function makeNode() { return { children: {}, file: null }; }
+  const root = makeNode();
+  for (const f of files) {
+    const parts = f.path.replace(/\\/g, '/').split('/');
+    let node = root;
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
+      if (!node.children[p]) node.children[p] = makeNode();
+      node = node.children[p];
+      if (i === parts.length - 1) node.file = { adds: f.adds, dels: f.dels };
+    }
+  }
+
+  // Collapse single-child directories into "dir/subdir" path segments
+  function collapse(node, name) {
+    const keys = Object.keys(node.children);
+    if (keys.length === 1 && node.file === null) {
+      const child = node.children[keys[0]];
+      return collapse(child, name ? `${name}/${keys[0]}` : keys[0]);
+    }
+    return { node, name };
+  }
+
+  function renderNode(node, name, depth) {
+    let out = '';
+    const indent = depth * 14;
+    if (name !== null) {
+      if (node.file !== null) {
+        // File leaf
+        const bars = `<span class="diff-stat-add">${'+'.repeat(node.file.adds)}</span><span class="diff-stat-del">${'-'.repeat(node.file.dels)}</span>`;
+        out += `<div class="diff-stat-line" style="padding-left:${indent}px">
+          <span class="diff-tree-file">${escHtml(name)}</span>
+          <span>${bars}</span>
+        </div>`;
+      } else {
+        // Directory node
+        out += `<div class="diff-tree-dir" style="padding-left:${indent}px">${escHtml(name)}/</div>`;
+      }
+    }
+    const childDepth = name === null ? 0 : depth + 1;
+    for (const key of Object.keys(node.children).sort()) {
+      const { node: cn, name: cn_name } = collapse(node.children[key], key);
+      out += renderNode(cn, cn_name, childDepth);
+    }
+    return out;
+  }
+
+  let html = renderNode(root, null, 0);
+  if (summary) {
+    html += `<div style="color:var(--text-muted);font-size:10px;margin-top:6px;font-family:var(--font)">${escHtml(summary)}</div>`;
+  }
+  el.innerHTML = html;
 }
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────

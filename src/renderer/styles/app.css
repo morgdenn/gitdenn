@@ -833,6 +833,16 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   padding: 2px 0;
   color: var(--text-sec);
 }
+.diff-tree-dir {
+  color: var(--text-muted);
+  font-size: 10px;
+  padding: 1px 0;
+  font-family: var(--font-mono);
+}
+.diff-tree-file {
+  color: var(--text-sec);
+  font-weight: 500;
+}
 
 /* ─── Working directory (WIP) staging UI ─────────────────────────────────────── */
 .wd { font-family: var(--font); }
