@@ -975,18 +975,26 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 }
 .commit-main-btn {
   flex: 1;
-  border-radius: 6px 0 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
-.commit-chevron-btn {
+.commit-menu-arrow {
   flex-shrink: 0;
-  padding: 8px 10px;
-  border-radius: 0 6px 6px 0;
-  border-left: 1px solid var(--accent-lt);
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--accent-lt);
+  border-radius: 4px;
+  font-size: 11px;
   line-height: 1;
+  cursor: pointer;
 }
-.commit-split-btn.disabled .commit-main-btn,
-.commit-split-btn.disabled .commit-chevron-btn { opacity: 0.5; cursor: not-allowed; }
+.commit-menu-arrow:hover { background: var(--accent-lt); }
+.commit-split-btn.disabled .commit-main-btn { opacity: 0.5; cursor: not-allowed; }
 .commit-dropdown {
   position: absolute;
   bottom: calc(100% + 4px);
