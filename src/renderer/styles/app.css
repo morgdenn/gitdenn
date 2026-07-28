@@ -40,8 +40,8 @@
   --toolbar-h:  44px;
   --header-h:   32px;
 
-  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  --font: 'Cascadia Code', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  --font-mono: 'Cascadia Code', 'SF Mono', 'Fira Code', 'Consolas', monospace;
 }
 
 html, body { height: 100%; overflow: hidden; }
