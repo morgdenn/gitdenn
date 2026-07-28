@@ -1258,7 +1258,9 @@ async function renderWipDetail() {
         <div class="commit-split-btn${staged.length ? '' : ' disabled'}">
           <button class="primary-btn commit-main-btn" data-act="commit" ${staged.length ? '' : raw('disabled')}>
             Commit ${staged.length} file${staged.length === 1 ? '' : 's'}
-            <span class="commit-menu-arrow" data-act="commit-menu" title="More options">&#9662;</span>
+          </button>
+          <button class="primary-btn commit-toggle-btn" data-act="commit-menu" ${staged.length ? '' : raw('disabled')} aria-label="More commit options">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div class="commit-dropdown" id="commit-dropdown" hidden>
             <button class="commit-dropdown-item" data-act="amend">Amend previous commit</button>
