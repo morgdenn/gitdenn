@@ -995,7 +995,7 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 .commit-split-btn.disabled .commit-toggle-btn { opacity: 0.5; cursor: not-allowed; }
 .commit-dropdown {
   position: absolute;
-  bottom: calc(100% + 4px);
+  top: calc(100% + 4px);
   right: 0;
   background: var(--bg-mid);
   border: 1px solid var(--border-lt);
