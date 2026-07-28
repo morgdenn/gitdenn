@@ -693,6 +693,7 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 .commit-msg {
   flex: 1 1 0;
   min-width: 120px;
+  height: var(--row-h);
   overflow: hidden;
   font-size: 12px;
   color: var(--text-pri);
@@ -731,7 +732,10 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 
 .commit-author {
   width: var(--author-w);
+  height: var(--row-h);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
   font-size: 11px;
   color: var(--text-sec);
   white-space: nowrap;
@@ -741,14 +745,20 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 
 .commit-date {
   width: var(--date-w);
+  height: var(--row-h);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
   font-size: 11px;
   color: var(--text-muted);
 }
 
 .commit-sha {
   width: var(--sha-w);
+  height: var(--row-h);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-dim);
