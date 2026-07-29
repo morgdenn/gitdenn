@@ -136,10 +136,29 @@ ipcMain.handle('git:log', async (event, { repoPath }) => {
       });
     } catch (e) { /* no upstreams */ }
 
+    // Full 40-char SHAs keyed by the branch name as the sidebar stores it:
+    //   local  refs/heads/main            → 'main'
+    //   remote refs/remotes/origin/feat   → 'remotes/origin/feat'
     const branchShas = {};
-    for (const [name, info] of Object.entries(branches.branches)) {
-      if (info.commit) branchShas[name] = info.commit;
-    }
+    try {
+      const refOut = await git.raw([
+        'for-each-ref', '--format=%(refname)\t%(objectname)', 'refs/heads', 'refs/remotes',
+      ]);
+      refOut.split('\n').forEach(line => {
+        const tab = line.indexOf('\t');
+        if (tab < 0) return;
+        const refname = line.slice(0, tab).trim();
+        const sha = line.slice(tab + 1).trim();
+        if (!sha) return;
+        let key;
+        if (refname.startsWith('refs/heads/')) {
+          key = refname.slice('refs/heads/'.length);
+        } else if (refname.startsWith('refs/remotes/')) {
+          key = 'remotes/' + refname.slice('refs/remotes/'.length);
+        }
+        if (key) branchShas[key] = sha;
+      });
+    } catch (e) { /* ignore */ }
 
     return {
       success: true,

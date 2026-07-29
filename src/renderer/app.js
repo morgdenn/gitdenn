@@ -183,7 +183,7 @@ function bindEvents() {
 
   // Single click a branch (local or remote) → select its tip commit in the graph
   on('local-branches-list',  'click', '.branch-item',  el => scrollToBranch(el.dataset.branch));
-  on('remote-branches-list', 'click', '.branch-remote', el => scrollToBranch(el.dataset.branch));
+  on('remote-branches-list', 'click', '.branch-remote', (el, e) => { console.log('[remote click]', el.dataset.branch, el); scrollToBranch(el.dataset.branch); });
 
   // Right-click a local branch → context menu
   on('local-branches-list', 'contextmenu', '.branch-item', (el, e) => {
@@ -769,11 +769,13 @@ function renderBranchTree(node, opts, depth = 0) {
 // Double-clicking a remote branch checks it out as a local tracking branch.
 function scrollToBranch(branch) {
   if (!branch || !state.commits) return;
-  // Primary: use the SHA git associates with this branch directly (most reliable).
+  console.log('[scrollToBranch] branch=', branch, 'branchShas keys=', Object.keys(state.branchShas || {}).slice(0, 10));
   const sha = state.branchShas && state.branchShas[branch];
+  console.log('[scrollToBranch] sha=', sha);
   if (!sha) return;
   selectCommit(sha, null);
   const rowEl = document.querySelector(`.commit-row[data-sha="${sha}"]`);
+  console.log('[scrollToBranch] rowEl=', rowEl);
   if (rowEl) rowEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
