@@ -136,10 +136,16 @@ ipcMain.handle('git:log', async (event, { repoPath }) => {
       });
     } catch (e) { /* no upstreams */ }
 
+    const branchShas = {};
+    for (const [name, info] of Object.entries(branches.branches)) {
+      if (info.commit) branchShas[name] = info.commit;
+    }
+
     return {
       success: true,
       commits,
       branches: branches.all,
+      branchShas,
       currentBranch: branches.current,
       remoteUrl,
       head,

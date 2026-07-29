@@ -562,6 +562,7 @@ async function loadRepo(repoPath) {
   }
 
   state.branches = result.branches;
+  state.branchShas = result.branchShas || {};
   state.currentBranch = result.currentBranch;
   state.remoteUrl = result.remoteUrl || null;
   state.status = result.status || {};
@@ -768,15 +769,11 @@ function renderBranchTree(node, opts, depth = 0) {
 // Double-clicking a remote branch checks it out as a local tracking branch.
 function scrollToBranch(branch) {
   if (!branch || !state.commits) return;
-  // Refs appear as "branchName" or "HEAD -> branchName" for local,
-  // and "origin/feature" for remote (stored without "remotes/" prefix in refs).
-  const remoteSuffix = branch.startsWith('remotes/') ? branch.slice('remotes/'.length) : null;
-  const commit = state.commits.find(c => c.refs && c.refs.some(r =>
-    r === branch || r === `HEAD -> ${branch}` || (remoteSuffix && r === remoteSuffix)
-  ));
-  if (!commit) return;
-  selectCommit(commit.sha, null);
-  const rowEl = document.querySelector(`.commit-row[data-sha="${commit.sha}"]`);
+  // Primary: use the SHA git associates with this branch directly (most reliable).
+  const sha = state.branchShas && state.branchShas[branch];
+  if (!sha) return;
+  selectCommit(sha, null);
+  const rowEl = document.querySelector(`.commit-row[data-sha="${sha}"]`);
   if (rowEl) rowEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
