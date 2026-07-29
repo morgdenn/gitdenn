@@ -181,6 +181,10 @@ function bindEvents() {
   // Double-click a local branch → switch to it
   on('local-branches-list', 'dblclick', '.branch-item', el => checkoutLocalBranch(el.dataset.branch));
 
+  // Single click a branch (local or remote) → select its tip commit in the graph
+  on('local-branches-list',  'click', '.branch-item',  el => scrollToBranch(el.dataset.branch));
+  on('remote-branches-list', 'click', '.branch-remote', el => scrollToBranch(el.dataset.branch));
+
   // Right-click a local branch → context menu
   on('local-branches-list', 'contextmenu', '.branch-item', (el, e) => {
     e.preventDefault();
@@ -756,6 +760,20 @@ function renderBranchTree(node, opts, depth = 0) {
 }
 
 // Double-clicking a remote branch checks it out as a local tracking branch.
+function scrollToBranch(branch) {
+  if (!branch || !state.commits) return;
+  // Refs appear as "branchName" or "HEAD -> branchName" for local,
+  // and "origin/feature" for remote (stored without "remotes/" prefix in refs).
+  const remoteSuffix = branch.startsWith('remotes/') ? branch.slice('remotes/'.length) : null;
+  const commit = state.commits.find(c => c.refs && c.refs.some(r =>
+    r === branch || r === `HEAD -> ${branch}` || (remoteSuffix && r === remoteSuffix)
+  ));
+  if (!commit) return;
+  selectCommit(commit.sha, null);
+  const rowEl = document.querySelector(`.commit-row[data-sha="${commit.sha}"]`);
+  if (rowEl) rowEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
 async function checkoutRemoteBranch(remoteBranch) {
   if (!remoteBranch || !state.repoPath) return;
   const label = remoteBranch.replace('remotes/', '');
