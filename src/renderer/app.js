@@ -790,14 +790,23 @@ let _ctxBranch = null;
 function showBranchCtxMenu(x, y, branch, isCurrent) {
   _ctxBranch = branch;
   const menu = $('branch-ctx-menu');
+
+  $('ctx-copy-branch').onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); doCopyBranchName(b); };
+
+  const ren = $('ctx-rename-branch');
+  ren.disabled = isCurrent;
+  ren.title = isCurrent ? 'Cannot rename the currently checked-out branch' : '';
+  ren.onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); doRenameBranch(b); };
+
   const del = $('ctx-delete-branch');
   del.disabled = isCurrent;
   del.title = isCurrent ? 'Cannot delete the currently checked-out branch' : '';
   del.onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); doDeleteBranch(b); };
+
   menu.style.display = 'block';
   // Clamp to viewport
   const vw = window.innerWidth, vh = window.innerHeight;
-  const mw = 160, mh = 36;
+  const mw = 180, mh = 108;
   menu.style.left = (x + mw > vw ? vw - mw - 4 : x) + 'px';
   menu.style.top  = (y + mh > vh ? vh - mh - 4 : y) + 'px';
 }
@@ -805,6 +814,24 @@ function showBranchCtxMenu(x, y, branch, isCurrent) {
 function hideBranchCtxMenu() {
   $('branch-ctx-menu').style.display = 'none';
   _ctxBranch = null;
+}
+
+function doCopyBranchName(branch) {
+  if (!branch) return;
+  navigator.clipboard.writeText(branch).then(() => showToast(`Copied: ${branch}`));
+}
+
+async function doRenameBranch(branch) {
+  if (!branch || !state.repoPath) return;
+  const newName = prompt(`Rename "${branch}" to:`, branch);
+  if (!newName || newName === branch) return;
+  const result = await window.gitApp.renameBranch(state.repoPath, branch, newName);
+  if (!result.success) {
+    alert(`Rename failed: ${result.error}`);
+    return;
+  }
+  showToast(`Renamed to ${newName}`);
+  await loadRepo(state.repoPath);
 }
 
 async function doDeleteBranch(branch) {

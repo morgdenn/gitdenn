@@ -430,6 +430,16 @@ ipcMain.handle('shell:openInVscode', async (event, { repoPath }) => {
   });
 });
 
+// Rename a local branch (git branch -m <old> <new>)
+ipcMain.handle('git:renameBranch', async (event, { repoPath, oldName, newName }) => {
+  try {
+    await simpleGit(repoPath).raw(['branch', '-m', oldName, newName]);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Delete a local branch (must not be currently checked out)
 ipcMain.handle('git:deleteBranch', async (event, { repoPath, name }) => {
   try {

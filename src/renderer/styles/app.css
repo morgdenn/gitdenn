@@ -1218,3 +1218,4 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 .ctx-menu-item:disabled { color: var(--text-muted); cursor: default; }
 .ctx-menu-item.danger { color: #f87171; }
 .ctx-menu-item.danger:hover:not(:disabled) { background: rgba(248, 113, 113, 0.12); }
+.ctx-menu-separator { height: 1px; background: var(--border-lt); margin: 4px 0; }
