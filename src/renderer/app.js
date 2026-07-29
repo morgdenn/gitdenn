@@ -188,7 +188,13 @@ function bindEvents() {
   // Right-click a local branch → context menu
   on('local-branches-list', 'contextmenu', '.branch-item', (el, e) => {
     e.preventDefault();
-    showBranchCtxMenu(e.clientX, e.clientY, el.dataset.branch, el.classList.contains('current'));
+    showBranchCtxMenu(e.clientX, e.clientY, el.dataset.branch, { isCurrent: el.classList.contains('current'), isRemote: false });
+  });
+
+  // Right-click a remote branch → context menu
+  on('remote-branches-list', 'contextmenu', '.branch-remote', (el, e) => {
+    e.preventDefault();
+    showBranchCtxMenu(e.clientX, e.clientY, el.dataset.branch, { isCurrent: false, isRemote: true });
   });
 
   // Close context menu on any click outside it
@@ -805,26 +811,39 @@ async function checkoutLocalBranch(branch) {
 
 let _ctxBranch = null;
 
-function showBranchCtxMenu(x, y, branch, isCurrent) {
+function showBranchCtxMenu(x, y, branch, { isCurrent, isRemote }) {
   _ctxBranch = branch;
   const menu = $('branch-ctx-menu');
 
   $('ctx-copy-branch').onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); doCopyBranchName(b); };
 
+  const checkout = $('ctx-checkout-remote');
+  checkout.style.display = isRemote ? 'block' : 'none';
+  if (isRemote) checkout.onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); checkoutRemoteBranch(b); };
+
   const ren = $('ctx-rename-branch');
-  ren.disabled = isCurrent;
-  ren.title = isCurrent ? 'Cannot rename the currently checked-out branch' : '';
-  ren.onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); doRenameBranch(b); };
+  ren.style.display = isRemote ? 'none' : 'block';
+  if (!isRemote) {
+    ren.disabled = isCurrent;
+    ren.title = isCurrent ? 'Cannot rename the currently checked-out branch' : '';
+    ren.onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); doRenameBranch(b); };
+  }
+
+  const sep = $('ctx-sep-delete');
+  sep.style.display = isRemote ? 'none' : 'block';
 
   const del = $('ctx-delete-branch');
-  del.disabled = isCurrent;
-  del.title = isCurrent ? 'Cannot delete the currently checked-out branch' : '';
-  del.onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); doDeleteBranch(b); };
+  del.style.display = isRemote ? 'none' : 'block';
+  if (!isRemote) {
+    del.disabled = isCurrent;
+    del.title = isCurrent ? 'Cannot delete the currently checked-out branch' : '';
+    del.onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); doDeleteBranch(b); };
+  }
 
   menu.style.display = 'block';
   // Clamp to viewport
   const vw = window.innerWidth, vh = window.innerHeight;
-  const mw = 180, mh = 108;
+  const mw = 180, mh = isRemote ? 72 : 108;
   menu.style.left = (x + mw > vw ? vw - mw - 4 : x) + 'px';
   menu.style.top  = (y + mh > vh ? vh - mh - 4 : y) + 'px';
 }
