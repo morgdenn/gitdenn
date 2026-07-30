@@ -402,12 +402,17 @@ function topKey(counts) {
   return best;
 }
 
-// Suggest a Conventional-Commits subject from the staged changes.
-ipcMain.handle('git:suggestCommit', async (event, { repoPath }) => {
+// Suggest a Conventional-Commits subject. Without `sha`, uses the staged
+// changes; with `sha`, uses that commit's own changes (for rewording).
+ipcMain.handle('git:suggestCommit', async (event, { repoPath, sha }) => {
   try {
     const git = simpleGit(repoPath);
-    const nameStatus = await git.diff(['--cached', '--name-status']);
-    const diffText = await git.diff(['--cached']);
+    const nameStatus = sha
+      ? await git.raw(['show', '--name-status', '--format=', sha])
+      : await git.diff(['--cached', '--name-status']);
+    const diffText = sha
+      ? await git.raw(['show', '--format=', sha])
+      : await git.diff(['--cached']);
 
     const files = [];
     for (const line of nameStatus.split('\n')) {

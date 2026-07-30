@@ -1428,14 +1428,15 @@ async function handleWipAction(act, path) {
   await refreshStatus();
 }
 
-// Fill the commit box with a heuristic message generated from the staged diff.
-async function generateCommitMessage() {
+// Fill a message box with a heuristic message. Without `sha`, generates from
+// the staged diff (new commit); with `sha`, from that commit's own diff.
+async function generateCommitMessage(sha, inputId = 'commit-msg-input') {
   if (!state.repoPath) return;
-  const res = await window.gitApp.suggestCommit(state.repoPath);
+  const res = await window.gitApp.suggestCommit(state.repoPath, sha || undefined);
   if (!res.success || !res.message) return;
-  state.commitMsg = res.message;
-  const input = $('commit-msg-input');
+  const input = $(inputId);
   if (input) input.value = res.message;
+  if (!sha) state.commitMsg = res.message; // track only for the new-commit box
 }
 
 async function doCommit() {
@@ -1466,9 +1467,10 @@ async function doAmend() {
 
 // ─── Reword (edit) the latest commit's message ────────────────────────────────
 function handleRewordAction(act) {
-  if (act === 'edit-msg')       return openRewordEditor();
-  if (act === 'reword-cancel')  return closeRewordEditor();
-  if (act === 'reword-save')    return doReword();
+  if (act === 'edit-msg')        return openRewordEditor();
+  if (act === 'reword-cancel')   return closeRewordEditor();
+  if (act === 'reword-save')     return doReword();
+  if (act === 'reword-suggest')  return generateCommitMessage(state.selectedSha, 'reword-input');
 }
 
 async function openRewordEditor() {
@@ -1476,6 +1478,10 @@ async function openRewordEditor() {
   const current = res.success ? res.message : '';
   render('detail-actions', html`
     <div class="reword">
+      <div class="wd-commit-head">
+        <span>Edit message</span>
+        <button class="wd-bulk" data-act="reword-suggest" title="Generate a message from this commit's changes">✨ Generate</button>
+      </div>
       <textarea id="reword-input" rows="4">${current}</textarea>
       <div class="reword-btns">
         <button class="secondary-btn" data-act="reword-cancel">Cancel</button>
