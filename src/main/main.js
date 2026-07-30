@@ -487,6 +487,16 @@ ipcMain.handle('git:commit', async (event, { repoPath, message }) => {
   }
 });
 
+// Full commit message (subject + body) for a sha
+ipcMain.handle('git:commitMessage', async (event, { repoPath, sha }) => {
+  try {
+    const msg = await simpleGit(repoPath).raw(['log', '-1', '--format=%B', sha]);
+    return { success: true, message: msg.replace(/\s+$/, '') };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle('git:commitAmend', async (event, { repoPath, message }) => {
   try {
     const git = simpleGit(repoPath);

@@ -821,6 +821,22 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 }
 #detail-meta { flex: 1; min-width: 0; }
 #detail-subject { font-size: 13px; font-weight: 500; line-height: 1.4; color: var(--text-pri); margin-bottom: 4px; }
+#detail-actions:not(:empty) { margin: 10px 0; }
+.reword { display: flex; flex-direction: column; gap: 8px; }
+.reword textarea {
+  width: 100%;
+  resize: vertical;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-lt);
+  border-radius: 6px;
+  color: var(--text-pri);
+  font-family: var(--font);
+  font-size: 12px;
+  padding: 8px;
+  outline: none;
+}
+.reword textarea:focus { border-color: var(--accent); }
+.reword-btns { display: flex; gap: 8px; justify-content: flex-end; }
 #detail-author { font-size: 11px; color: var(--text-sec); }
 #detail-date { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 

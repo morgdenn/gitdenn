@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('gitApp', {
   unstageAll: (repoPath) => ipcRenderer.invoke('git:unstageAll', { repoPath }),
   commit:      (repoPath, message) => ipcRenderer.invoke('git:commit',      { repoPath, message }),
   commitAmend: (repoPath, message) => ipcRenderer.invoke('git:commitAmend', { repoPath, message }),
+  commitMessage: (repoPath, sha) => ipcRenderer.invoke('git:commitMessage', { repoPath, sha }),
   suggestCommit: (repoPath) => ipcRenderer.invoke('git:suggestCommit', { repoPath }),
   push:       (repoPath) => ipcRenderer.invoke('git:push',      { repoPath }),
   pushForce:  (repoPath) => ipcRenderer.invoke('git:pushForce', { repoPath }),

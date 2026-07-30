@@ -217,6 +217,9 @@ function bindEvents() {
   $('detail-diff').addEventListener('input', e => {
     if (e.target.id === 'commit-msg-input') state.commitMsg = e.target.value;
   });
+
+  // Reword (edit message) actions in the commit detail panel
+  on('detail-actions', 'click', '[data-act]', el => handleRewordAction(el.dataset.act));
 }
 
 // ─── Column Resizing ──────────────────────────────────────────────────────────
@@ -1251,6 +1254,10 @@ async function selectCommit(sha, idx) {
   $('detail-date').textContent = new Date(commit.timestamp * 1000).toLocaleString();
   $('detail-sha').textContent = commit.sha;
   $('detail-refs').innerHTML = buildRefBadges(commit.refs);
+  // Only the current tip (HEAD) can be safely reworded (via amend, no rebase).
+  render('detail-actions', commit.sha === state.head
+    ? html`<button class="wd-bulk" data-act="edit-msg">Edit message</button>`
+    : '');
   $('detail-diff').innerHTML = '<div style="color:var(--text-muted);font-family:var(--font);font-size:11px;">Loading diff…</div>';
 
   // Fetch diff
@@ -1455,6 +1462,49 @@ async function doAmend() {
   detailContent.style.display = 'none';
   detailPlaceholder.style.display = 'flex';
   showToast('Amended previous commit');
+}
+
+// ─── Reword (edit) the latest commit's message ────────────────────────────────
+function handleRewordAction(act) {
+  if (act === 'edit-msg')       return openRewordEditor();
+  if (act === 'reword-cancel')  return closeRewordEditor();
+  if (act === 'reword-save')    return doReword();
+}
+
+async function openRewordEditor() {
+  const res = await window.gitApp.commitMessage(state.repoPath, state.selectedSha);
+  const current = res.success ? res.message : '';
+  render('detail-actions', html`
+    <div class="reword">
+      <textarea id="reword-input" rows="4">${current}</textarea>
+      <div class="reword-btns">
+        <button class="secondary-btn" data-act="reword-cancel">Cancel</button>
+        <button class="primary-btn" data-act="reword-save">Save</button>
+      </div>
+    </div>
+  `);
+  const ta = $('reword-input');
+  if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+}
+
+function closeRewordEditor() {
+  render('detail-actions', html`<button class="wd-bulk" data-act="edit-msg">Edit message</button>`);
+}
+
+async function doReword() {
+  const ta = $('reword-input');
+  const msg = ta ? ta.value.trim() : '';
+  if (!msg) return alert('Commit message cannot be empty.');
+  if ((state.status && state.status.staged) > 0) {
+    return alert('You have staged changes.\n\nUnstage them first, or they would be folded into this commit when the message is amended.');
+  }
+  const res = await window.gitApp.commitAmend(state.repoPath, msg);
+  if (!res.success) return alert(`Edit message failed: ${res.error}`);
+  state.selectedSha = null;
+  await loadRepo(state.repoPath); // HEAD sha changed → reload graph
+  detailContent.style.display = 'none';
+  detailPlaceholder.style.display = 'flex';
+  showToast('Commit message updated');
 }
 
 // Discard all changes to the currently-viewed file (destructive → confirm).
