@@ -977,6 +977,16 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   flex-direction: column;
   gap: 8px;
 }
+.wd-commit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
 
 /* Split commit button */
 .commit-split-btn {

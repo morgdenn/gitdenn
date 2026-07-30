@@ -367,6 +367,86 @@ ipcMain.handle('git:pushForce', async (event, { repoPath }) => {
   }
 });
 
+// ─── Smart (heuristic) commit message generation ─────────────────────────────
+// Conventional-commit type rules by path/extension. First match wins.
+const COMMIT_TYPE_RULES = [
+  [/(^|\/)tests?\//, 'test'],
+  [/(^|\/)__tests__\//, 'test'],
+  [/\.(test|spec)\.[jt]sx?$/, 'test'],
+  [/(^|\/)\.github\/workflows\//, 'ci'],
+  [/(Jenkinsfile|\.gitlab-ci\.ya?ml|buildspec\.ya?ml)$/, 'ci'],
+  [/\.tf$/, 'infra'],
+  [/(^|\/)docs?\/|README|CHANGELOG|\.md$/i, 'docs'],
+  [/(package(-lock)?\.json|requirements.*\.txt|Pipfile|go\.(mod|sum)|Gemfile|pom\.xml|\.csproj$)/, 'build'],
+  [/Dockerfile|docker-compose\.ya?ml/, 'build'],
+  [/\.(ya?ml|json|toml|ini|cfg|env)$/, 'chore'],
+];
+const STATUS_ACTION = { A: 'add', D: 'remove', M: 'update', R: 'rename', C: 'copy' };
+const FIX_KEYWORDS = /\b(fix(e[sd])?|bug|error|issue|crash|resolve[sd]?|patch)\b/i;
+
+function classifyCommitFile(p) {
+  for (const [re, type] of COMMIT_TYPE_RULES) if (re.test(p)) return type;
+  return null; // ordinary source — decided later from status/keywords
+}
+
+function scopeFromPath(p) {
+  const parts = p.split('/');
+  if (parts.length === 1) return null;
+  for (const seg of parts.slice(0, -1)) if (!['src', 'lib', 'app', '.'].includes(seg)) return seg;
+  return parts[0];
+}
+
+function topKey(counts) {
+  let best = null, n = -1;
+  for (const [k, v] of Object.entries(counts)) if (v > n) { best = k; n = v; }
+  return best;
+}
+
+// Suggest a Conventional-Commits subject from the staged changes.
+ipcMain.handle('git:suggestCommit', async (event, { repoPath }) => {
+  try {
+    const git = simpleGit(repoPath);
+    const nameStatus = await git.diff(['--cached', '--name-status']);
+    const diffText = await git.diff(['--cached']);
+
+    const files = [];
+    for (const line of nameStatus.split('\n')) {
+      if (!line.trim()) continue;
+      const parts = line.split('\t');
+      files.push({ code: parts[0][0], path: parts[parts.length - 1] });
+    }
+    if (!files.length) return { success: true, message: '' };
+
+    const fixSignal = FIX_KEYWORDS.test(diffText);
+    const typeCount = {}, scopeCount = {}, actionCount = {};
+    for (const { code, path: p } of files) {
+      let type = classifyCommitFile(p);
+      if (type === null) {
+        if (code === 'D') type = 'chore';
+        else if (code === 'A') type = 'feat';
+        else type = fixSignal ? 'fix' : 'refactor';
+      }
+      typeCount[type] = (typeCount[type] || 0) + 1;
+      const scope = scopeFromPath(p);
+      if (scope) scopeCount[scope] = (scopeCount[scope] || 0) + 1;
+      const action = STATUS_ACTION[code] || 'update';
+      actionCount[action] = (actionCount[action] || 0) + 1;
+    }
+
+    const dominantType = topKey(typeCount);
+    const dominantScope = Object.keys(scopeCount).length ? topKey(scopeCount) : null;
+    const detail = files.length === 1
+      ? `${STATUS_ACTION[files[0].code] || 'update'} ${files[0].path}`
+      : `${topKey(actionCount)} ${files.length} files`;
+
+    const scopePart = dominantScope ? `(${dominantScope})` : '';
+    const subject = `${dominantType}${scopePart}: ${detail}`.slice(0, 72);
+    return { success: true, message: subject };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Pull the current branch from its upstream
 ipcMain.handle('git:pull', async (event, { repoPath }) => {
   try {

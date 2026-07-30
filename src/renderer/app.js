@@ -1317,6 +1317,10 @@ async function renderWipDetail() {
         ${staged.length ? staged.map(f => fileRow(f, 'staged')) : html`<div class="wd-empty">Nothing staged</div>`}
       </div>
       <div class="wd-commit">
+        <div class="wd-commit-head">
+          <span>Commit message</span>
+          <button class="wd-bulk" data-act="suggest" ${staged.length ? '' : raw('disabled')} title="Generate a message from the staged changes">✨ Generate</button>
+        </div>
         <textarea id="commit-msg-input" placeholder="Commit message" rows="3">${state.commitMsg || ''}</textarea>
         <div class="commit-split-btn${staged.length ? '' : ' disabled'}">
           <button class="primary-btn commit-main-btn" data-act="commit" ${staged.length ? '' : raw('disabled')}>
@@ -1393,6 +1397,7 @@ async function handleWipAction(act, path) {
   if (!state.repoPath) return;
   if (act === 'commit') return doCommit();
   if (act === 'amend')  return doAmend();
+  if (act === 'suggest') return generateCommitMessage();
   if (act === 'commit-menu') {
     const dd = $('commit-dropdown');
     if (dd) dd.hidden = !dd.hidden;
@@ -1414,6 +1419,16 @@ async function handleWipAction(act, path) {
   else if (act === 'stage-all')   await window.gitApp.stageAll(state.repoPath);
   else if (act === 'unstage-all') await window.gitApp.unstageAll(state.repoPath);
   await refreshStatus();
+}
+
+// Fill the commit box with a heuristic message generated from the staged diff.
+async function generateCommitMessage() {
+  if (!state.repoPath) return;
+  const res = await window.gitApp.suggestCommit(state.repoPath);
+  if (!res.success || !res.message) return;
+  state.commitMsg = res.message;
+  const input = $('commit-msg-input');
+  if (input) input.value = res.message;
 }
 
 async function doCommit() {
