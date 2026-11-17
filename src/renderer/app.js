@@ -849,6 +849,10 @@ function showBranchCtxMenu(x, y, branch, { isCurrent, isRemote }) {
 
   $('ctx-copy-branch').onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); doCopyBranchName(b); };
 
+  const pull = $('ctx-pull-branch');
+  pull.style.display = isRemote ? 'none' : 'block';
+  if (!isRemote) pull.onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); doPullBranch(b); };
+
   const checkout = $('ctx-checkout-remote');
   checkout.style.display = isRemote ? 'block' : 'none';
   if (isRemote) checkout.onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); checkoutRemoteBranch(b); };
@@ -875,7 +879,7 @@ function showBranchCtxMenu(x, y, branch, { isCurrent, isRemote }) {
   menu.style.display = 'block';
   // Clamp to viewport
   const vw = window.innerWidth, vh = window.innerHeight;
-  const mw = 180, mh = isRemote ? 72 : 108;
+  const mw = 180, mh = isRemote ? 72 : 140;
   menu.style.left = (x + mw > vw ? vw - mw - 4 : x) + 'px';
   menu.style.top  = (y + mh > vh ? vh - mh - 4 : y) + 'px';
 }
@@ -1672,6 +1676,19 @@ async function doPull() {
     return;
   }
   showToast('Pulled');
+  await loadRepo(state.repoPath);
+}
+
+// Pull any local branch (fast-forward only if it isn't checked out).
+async function doPullBranch(branch) {
+  if (!state.repoPath || !branch) return;
+  showToast(`Pulling ${branch}…`);
+  const result = await window.gitApp.pullBranch(state.repoPath, branch);
+  if (!result.success) {
+    alert(`Pull failed: ${result.error}`);
+    return;
+  }
+  showToast(result.upToDate ? `${branch} is already up to date` : `Pulled ${branch}`);
   await loadRepo(state.repoPath);
 }
 

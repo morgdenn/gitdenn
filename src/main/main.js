@@ -423,7 +423,38 @@ ipcMain.handle('git:pull', async (event, { repoPath }) => {
   }
 });
 
-ipcMain.handle('git:pullRebase', async (event, { repoPath }) => {
+// Pull a specific local branch. The checked-out branch gets a normal pull; any
+// other branch is fast-forwarded from its upstream without checking it out
+// (`git fetch <remote> <remoteRef>:<branch>` refuses non-fast-forward updates).
+ipcMain.handle('git:pullBranch', async (event, { repoPath, branch }) => {
+  try {
+    const git = simpleGit(repoPath);
+    const current = (await git.raw(['rev-parse', '--abbrev-ref', 'HEAD'])).trim();
+    if (current === branch) {
+      await git.pull();
+      return { success: true, upToDate: false };
+    }
+    const cfg = async key => {
+      try { return (await git.raw(['config', '--get', key])).trim(); } catch (e) { return ''; }
+    };
+    const remote = await cfg(`branch.${branch}.remote`);
+    const merge = await cfg(`branch.${branch}.merge`);
+    if (!remote || !merge) {
+      return { success: false, error: `'${branch}' has no upstream branch to pull from.` };
+    }
+    const before = (await git.raw(['rev-parse', `refs/heads/${branch}`])).trim();
+    await git.raw(['fetch', remote, `${merge}:refs/heads/${branch}`]);
+    const after = (await git.raw(['rev-parse', `refs/heads/${branch}`])).trim();
+    return { success: true, upToDate: before === after };
+  } catch (err) {
+    const msg = /non-fast-forward|rejected/i.test(err.message)
+      ? `Cannot fast-forward '${branch}' — it has diverged from its upstream. Check it out and pull/rebase instead.`
+      : err.message;
+    return { success: false, error: msg };
+  }
+});
+
+ipcMain.handle('git:pullRebase',async (event, { repoPath }) => {
   try {
     await simpleGit(repoPath).pull(['--rebase']);
     return { success: true };
