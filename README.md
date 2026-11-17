@@ -17,7 +17,7 @@
 **Repository**
 - **Clone** any public or private Git repo via URL (with progress)
 - **Open** existing local repositories
-- **Recent repos** list (persisted in localStorage) — repos owned by a GitHub **organisation** show the org's logo as a small icon
+- **Recent repos** list (persisted in localStorage) — GitHub repos show their owner's avatar (organisation logo or personal profile picture) as a small icon
 - **Open in GitHub** (when the remote is on GitHub) and **Open in VS Code**
 
 **Commit graph**

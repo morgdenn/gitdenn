@@ -451,8 +451,8 @@ ipcMain.handle('git:suggestCommit', async (event, { repoPath, sha }) => {
 });
 
 // ─── GitHub organisation icon ────────────────────────────────────────────────
-// If a repo's origin is on GitHub and the owner is an *organisation*, return its
-// avatar as a small data URL (null for personal accounts / non-GitHub remotes).
+// If a repo's origin is on GitHub, return its owner's avatar (organisation logo
+// or the person's profile picture) as a small data URL; null for non-GitHub remotes.
 // Only the public owner name is sent to GitHub (unauthenticated, generic UA).
 ipcMain.handle('github:orgIcon', async (event, { repoPath }) => {
   try {
@@ -471,14 +471,13 @@ ipcMain.handle('github:orgIcon', async (event, { repoPath }) => {
     const res = await fetch(`https://api.github.com/users/${encodeURIComponent(owner)}`, { headers });
     if (!res.ok) return { success: false, error: `GitHub lookup failed (${res.status})` };
     const info = await res.json();
-    if (info.type !== 'Organization') return { success: true, org: null, icon: null };
 
     const sep = info.avatar_url.includes('?') ? '&' : '?';
     const img = await fetch(`${info.avatar_url}${sep}s=48`, { headers: { 'User-Agent': 'GitDenn' } });
     if (!img.ok) return { success: false, error: `Avatar download failed (${img.status})` };
     const type = (img.headers.get('content-type') || 'image/png').split(';')[0];
     const buf = Buffer.from(await img.arrayBuffer());
-    return { success: true, org: owner, icon: `data:${type};base64,${buf.toString('base64')}` };
+    return { success: true, org: owner, kind: info.type, icon: `data:${type};base64,${buf.toString('base64')}` };
   } catch (err) {
     return { success: false, error: err.message };
   }

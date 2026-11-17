@@ -470,10 +470,10 @@ const orgIconTried = new Set(); // paths already attempted this session
 let orgIconBusy = false;
 
 function loadOrgIcons() {
-  try { return JSON.parse(localStorage.getItem('orgIcons') || '{}'); } catch (e) { return {}; }
+  try { return JSON.parse(localStorage.getItem('ownerIcons') || '{}'); } catch (e) { return {}; }
 }
 function saveOrgIcons(map) {
-  try { localStorage.setItem('orgIcons', JSON.stringify(map)); } catch (e) { /* quota: ignore */ }
+  try { localStorage.setItem('ownerIcons', JSON.stringify(map)); } catch (e) { /* quota: ignore */ }
 }
 
 async function refreshOrgIcons() {
