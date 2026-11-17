@@ -152,7 +152,7 @@ function bindEvents() {
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); hideRebaseModal(); hideBranchCtxMenu(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
+    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); hideRebaseModal(); hideSquashModal(); hideBranchCtxMenu(); hideCommitCtxMenu(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'r') loadRepo(state.repoPath);
     // Ctrl/Cmd+Shift+E → open the repo in VS Code
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'e' || e.key === 'E')) {
@@ -179,7 +179,30 @@ function bindEvents() {
   setInterval(() => refreshRefs(true), 60000);
 
   // Commit row selection (delegated — survives every re-render, bound once)
-  on(commitRows, 'click', '.commit-row', el => selectCommit(el.dataset.sha, el.dataset.idx));
+  // Ctrl/Cmd-click toggles a commit in a multi-selection, Shift-click selects
+  // a range; a plain click selects just that commit.
+  on(commitRows, 'click', '.commit-row', (el, e) => {
+    if (e && (e.ctrlKey || e.metaKey)) return toggleMultiSelect(el.dataset.sha);
+    if (e && e.shiftKey) return rangeMultiSelect(el.dataset.sha);
+    state.multiSel = [];
+    selectCommit(el.dataset.sha, el.dataset.idx);
+  });
+
+  // Right-click a commit → context menu (squash)
+  on(commitRows, 'contextmenu', '.commit-row', (el, e) => {
+    e.preventDefault();
+    const sha = el.dataset.sha;
+    if (sha === '__WIP__') return;
+    if (!(state.multiSel || []).includes(sha)) {
+      state.multiSel = [];
+      selectCommit(sha, el.dataset.idx);
+    }
+    showCommitCtxMenu(e.clientX, e.clientY);
+  });
+
+  $('squash-cancel').addEventListener('click', hideSquashModal);
+  $('squash-cancel-2').addEventListener('click', hideSquashModal);
+  $('squash-confirm').addEventListener('click', doSquash);
 
   // Double-click a remote branch → check it out as a local tracking branch
   on('remote-branches-list', 'dblclick', '.branch-remote', el => checkoutRemoteBranch(el.dataset.branch));
@@ -206,6 +229,7 @@ function bindEvents() {
   // Close context menu on any click outside it
   document.addEventListener('click', e => {
     if (!e.target.closest('#branch-ctx-menu')) hideBranchCtxMenu();
+    if (!e.target.closest('#commit-ctx-menu')) hideCommitCtxMenu();
   });
 
   // Working-directory staging/commit actions (delegated, bound once)
@@ -1020,7 +1044,7 @@ function renderCommitRows(graphData) {
   const remoteNames = getRemoteNames();
   render(commitRows, graphData.map((row, i) => {
     const { commit } = row;
-    const selected = commit.sha === state.selectedSha ? 'selected' : '';
+    const selected = (commit.sha === state.selectedSha || (state.multiSel || []).includes(commit.sha)) ? 'selected' : '';
     const branchRefs = filterSyncedRemotes(
       commit.refs.filter(r => !r.startsWith('tag: ')),
       remoteNames
@@ -1256,14 +1280,100 @@ function paintGraph(graphData) {
   }
 }
 
+// ─── Multi-select & squash ────────────────────────────────────────────────────
+function applySelectionClasses() {
+  const multi = state.multiSel || [];
+  document.querySelectorAll('.commit-row').forEach(el => {
+    el.classList.toggle('selected', el.dataset.sha === state.selectedSha || multi.includes(el.dataset.sha));
+  });
+}
+
+function toggleMultiSelect(sha) {
+  if (sha === '__WIP__') return;
+  let multi = state.multiSel || [];
+  if (!multi.length && state.selectedSha && state.selectedSha !== '__WIP__') multi = [state.selectedSha];
+  multi = multi.includes(sha) ? multi.filter(s => s !== sha) : [...multi, sha];
+  state.multiSel = multi;
+  state.selectedSha = sha; // anchor for shift-range
+  applySelectionClasses();
+}
+
+function rangeMultiSelect(sha) {
+  if (sha === '__WIP__') return;
+  const order = state.commits.map(c => c.sha);
+  const a = order.indexOf(state.selectedSha);
+  const b = order.indexOf(sha);
+  if (a < 0 || b < 0) return selectCommit(sha, b);
+  const [lo, hi] = a < b ? [a, b] : [b, a];
+  state.multiSel = order.slice(lo, hi + 1).filter(s => s !== '__WIP__');
+  applySelectionClasses(); // keep the anchor so further shift-clicks re-range
+}
+
+function showCommitCtxMenu(x, y) {
+  const n = (state.multiSel || []).length || 1;
+  const btn = $('ctx-squash-commits');
+  btn.textContent = n > 1 ? `Squash ${n} commits` : 'Squash commits';
+  btn.disabled = n < 2;
+  btn.title = n < 2 ? 'Ctrl-click or Shift-click to select two or more commits first' : '';
+  btn.onclick = () => { hideCommitCtxMenu(); showSquashModal(); };
+  const menu = $('commit-ctx-menu');
+  menu.style.display = 'block';
+  const vw = window.innerWidth, vh = window.innerHeight;
+  menu.style.left = (x + 180 > vw ? vw - 184 : x) + 'px';
+  menu.style.top  = (y + 40 > vh ? vh - 44 : y) + 'px';
+}
+function hideCommitCtxMenu() {
+  const m = $('commit-ctx-menu');
+  if (m) m.style.display = 'none';
+}
+
+let _squashShas = [];
+async function showSquashModal() {
+  const shas = [...(state.multiSel || [])];
+  if (shas.length < 2) return;
+  _squashShas = shas;
+  // Oldest first (commits list is newest-first).
+  const order = state.commits.map(c => c.sha);
+  const sorted = shas.sort((a, b) => order.indexOf(b) - order.indexOf(a));
+  $('squash-title').textContent = `Squash ${shas.length} commits`;
+  const ta = $('squash-message');
+  ta.value = 'Loading messages…';
+  $('squash-modal').style.display = 'flex';
+  const msgs = [];
+  for (const sha of sorted) {
+    const r = await window.gitApp.commitMessage(state.repoPath, sha);
+    if (r.success) msgs.push(r.message);
+  }
+  ta.value = msgs.join('\n\n');
+  ta.focus();
+  ta.setSelectionRange(0, 0);
+}
+function hideSquashModal() {
+  const m = $('squash-modal');
+  if (m) m.style.display = 'none';
+}
+
+async function doSquash() {
+  const message = $('squash-message').value.trim();
+  if (!message) return alert('Please enter a commit message.');
+  const btn = $('squash-confirm');
+  btn.disabled = true;
+  const res = await window.gitApp.squash(state.repoPath, _squashShas, message);
+  btn.disabled = false;
+  if (!res.success) return alert(`Squash failed: ${res.error}`);
+  hideSquashModal();
+  state.multiSel = [];
+  state.selectedSha = null;
+  showToast(`Squashed ${_squashShas.length} commits`);
+  await loadRepo(state.repoPath);
+}
+
 // ─── Select Commit ────────────────────────────────────────────────────────────
 async function selectCommit(sha, idx) {
   state.selectedSha = sha;
 
   // Update row highlight
-  document.querySelectorAll('.commit-row').forEach(el => {
-    el.classList.toggle('selected', el.dataset.sha === sha);
-  });
+  applySelectionClasses();
 
   // Repaint to show selection dot
   paintGraph(state.graphData);

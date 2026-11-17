@@ -505,6 +505,53 @@ ipcMain.handle('git:commitAmend', async (event, { repoPath, message }) => {
   }
 });
 
+// Squash several commits on the current branch into one. The selected commits
+// must be a contiguous run on HEAD's first-parent history with no merges. The
+// squashed commit reuses the newest selected commit's tree (so the result is
+// identical content), is parented on the oldest's parent, and any newer commits
+// are replayed on top of it (conflict-free, since the trees match).
+ipcMain.handle('git:squash', async (event, { repoPath, shas, message }) => {
+  const git = simpleGit(repoPath);
+  let rebasing = false;
+  try {
+    if (!Array.isArray(shas) || shas.length < 2) throw new Error('Select at least two commits to squash.');
+    if (!message || !message.trim()) throw new Error('Commit message cannot be empty.');
+
+    const chain = (await git.raw(['rev-list', '--first-parent', '-n', '5000', 'HEAD'])).split('\n').filter(Boolean);
+    const idx = shas.map(s => chain.indexOf(s));
+    if (idx.some(i => i < 0)) throw new Error('Only commits on the current branch can be squashed.');
+    const min = Math.min(...idx), max = Math.max(...idx);
+    if (new Set(idx).size !== shas.length || max - min !== shas.length - 1) {
+      throw new Error('Selected commits must be consecutive (no gaps) on the current branch.');
+    }
+    const newest = chain[min];
+    const oldest = chain[max];
+
+    const parents = (await git.raw(['rev-list', '--parents', '-n', '1', oldest])).trim().split(' ');
+    if (parents.length < 2) throw new Error('Cannot squash the root commit.');
+    const base = parents[1];
+    const merges = (await git.raw(['rev-list', '--merges', `${base}..HEAD`])).trim();
+    if (merges) throw new Error('Cannot squash across merge commits.');
+
+    const tree = (await git.raw(['rev-parse', `${newest}^{tree}`])).trim();
+    const newSha = (await git.raw(['commit-tree', tree, '-p', base, '-m', message.trim()])).trim();
+
+    if (min === 0) {
+      // Newest selected commit is HEAD: just move the branch; working tree and
+      // index are untouched.
+      await git.raw(['reset', '--soft', newSha]);
+    } else {
+      rebasing = true;
+      await git.raw(['rebase', '--autostash', '--onto', newSha, newest]);
+      rebasing = false;
+    }
+    return { success: true, sha: newSha };
+  } catch (err) {
+    if (rebasing) { try { await git.raw(['rebase', '--abort']); } catch (e) { /* ignore */ } }
+    return { success: false, error: err.message };
+  }
+});
+
 // Set the window/taskbar icon from a PNG data URL (rendered by the renderer)
 ipcMain.handle('window:setIcon', (event, { dataUrl }) => {
   try {
