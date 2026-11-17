@@ -414,12 +414,24 @@ function topKey(counts) {
 ipcMain.handle('git:suggestCommit', async (event, { repoPath, sha }) => {
   try {
     const git = simpleGit(repoPath);
-    const nameStatus = sha
-      ? await git.raw(['show', '--name-status', '--format=', sha])
-      : await git.diff(['--cached', '--name-status']);
-    const diffText = sha
-      ? await git.raw(['show', '--format=', sha])
-      : await git.diff(['--cached']);
+    let nameStatus, diffText;
+    if (sha) {
+      nameStatus = await git.raw(['show', '--name-status', '--format=', sha]);
+      diffText = await git.raw(['show', '--format=', sha]);
+    } else {
+      nameStatus = await git.diff(['--cached', '--name-status']);
+      diffText = await git.diff(['--cached']);
+      if (!nameStatus.trim()) {
+        // Nothing staged: describe the working-tree changes instead (tracked
+        // edits vs HEAD, plus untracked files as additions).
+        try {
+          nameStatus = await git.raw(['diff', 'HEAD', '--name-status']);
+          diffText = await git.raw(['diff', 'HEAD']);
+        } catch (e) { nameStatus = ''; diffText = ''; } // no HEAD yet
+        const untracked = (await git.raw(['ls-files', '--others', '--exclude-standard'])).split('\n').filter(Boolean);
+        nameStatus += untracked.map(f => `A\t${f}`).join('\n');
+      }
+    }
 
     const files = [];
     for (const line of nameStatus.split('\n')) {

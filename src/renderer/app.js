@@ -1685,7 +1685,7 @@ async function renderWipDetail() {
       <div class="wd-commit">
         <div class="wd-commit-head">
           <span>Commit message</span>
-          <button class="wd-bulk" data-act="suggest" ${staged.length ? '' : raw('disabled')} title="Generate a message from the staged changes">✨ Generate</button>
+          <button class="wd-bulk" data-act="suggest" ${(staged.length || unstaged.length) ? '' : raw('disabled')} title="${staged.length ? 'Generate a message from the staged changes' : 'Nothing staged — generate a message from the working changes'}">✨ Generate</button>
         </div>
         <textarea id="commit-msg-input" placeholder="Commit message" rows="3">${state.commitMsg || ''}</textarea>
         <div class="commit-split-btn${staged.length ? '' : ' disabled'}">
@@ -1737,7 +1737,8 @@ async function handleWipAction(act, path) {
 async function generateCommitMessage(sha, inputId = 'commit-msg-input') {
   if (!state.repoPath) return;
   const res = await window.gitApp.suggestCommit(state.repoPath, sha || undefined);
-  if (!res.success || !res.message) return;
+  if (!res.success) return showToast(`Couldn't generate a message: ${res.error}`);
+  if (!res.message) return showToast('No changes to describe');
   const input = $(inputId);
   if (input) input.value = res.message;
   if (!sha) state.commitMsg = res.message; // track only for the new-commit box
