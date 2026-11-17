@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld('gitApp', {
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', { url }),
   openInVscode: (repoPath) => ipcRenderer.invoke('shell:openInVscode', { repoPath }),
   fetch: (repoPath) => ipcRenderer.invoke('git:fetch', { repoPath }),
+  refs: (repoPath, fetch) => ipcRenderer.invoke('git:refs', { repoPath, fetch: !!fetch }),
 
   // Events
   onCloneProgress: (callback) => {

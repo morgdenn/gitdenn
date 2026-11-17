@@ -167,10 +167,16 @@ function bindEvents() {
   // Reflect working-directory changes automatically: immediately on focus, and
   // via a light poll that runs whether or not the window is focused (so edits
   // show while GitDenn sits side-by-side with an editor).
-  window.addEventListener('focus', () => refreshWorkingState());
+  window.addEventListener('focus', () => { refreshWorkingState(); refreshRefs(false); });
   setInterval(() => {
     if (state.repoPath) refreshWorkingState();
   }, 2000);
+
+  // Keep branch ↑/↓ counts current: a cheap local ref check every 5s (catches
+  // commits/pulls made elsewhere) and a real `git fetch` every 60s so remote
+  // changes show up like in other clients.
+  setInterval(() => refreshRefs(false), 5000);
+  setInterval(() => refreshRefs(true), 60000);
 
   // Commit row selection (delegated — survives every re-render, bound once)
   on(commitRows, 'click', '.commit-row', el => selectCommit(el.dataset.sha, el.dataset.idx));
@@ -643,6 +649,30 @@ async function refreshWorkingState() {
   graphScroll.scrollTop = scrollTop;
 
   if (state.selectedSha === '__WIP__') renderWipDetail();
+}
+
+// Re-read branch tips + ahead/behind (optionally after a background fetch).
+// If any branch tip moved, reload the repo so the graph matches; otherwise just
+// repaint the sidebar when the counts changed.
+let refsBusy = false;
+async function refreshRefs(fetch) {
+  if (!state.repoPath || !state.realCommits || refsBusy) return;
+  refsBusy = true;
+  const repo = state.repoPath;
+  try {
+    const res = await window.gitApp.refs(repo, fetch);
+    if (!res.success || repo !== state.repoPath) return;
+
+    const shasChanged = JSON.stringify(res.branchShas) !== JSON.stringify(state.branchShas || {});
+    if (shasChanged) { await loadRepo(repo); return; }
+
+    if (JSON.stringify(res.tracking) !== JSON.stringify(state.tracking || {})) {
+      state.tracking = res.tracking;
+      renderBranches();
+    }
+  } finally {
+    refsBusy = false;
+  }
 }
 
 function showLoading(text) {

@@ -119,46 +119,7 @@ ipcMain.handle('git:log', async (event, { repoPath }) => {
     let head = null;
     try { head = (await git.revparse(['HEAD'])).trim(); } catch (e) { head = null; }
 
-    // Per-branch ahead/behind vs. upstream, from git's own tracking info.
-    const tracking = {};
-    try {
-      const raw = await git.raw([
-        'for-each-ref', '--format=%(refname:short)%09%(upstream:track)', 'refs/heads',
-      ]);
-      raw.split('\n').forEach(line => {
-        const tab = line.indexOf('\t');
-        if (tab < 0) return;
-        const name = line.slice(0, tab);
-        const track = line.slice(tab + 1);
-        const ahead = /ahead (\d+)/.exec(track);
-        const behind = /behind (\d+)/.exec(track);
-        if (name) tracking[name] = { ahead: ahead ? +ahead[1] : 0, behind: behind ? +behind[1] : 0 };
-      });
-    } catch (e) { /* no upstreams */ }
-
-    // Full 40-char SHAs keyed by the branch name as the sidebar stores it:
-    //   local  refs/heads/main            → 'main'
-    //   remote refs/remotes/origin/feat   → 'remotes/origin/feat'
-    const branchShas = {};
-    try {
-      const refOut = await git.raw([
-        'for-each-ref', '--format=%(refname)\t%(objectname)', 'refs/heads', 'refs/remotes',
-      ]);
-      refOut.split('\n').forEach(line => {
-        const tab = line.indexOf('\t');
-        if (tab < 0) return;
-        const refname = line.slice(0, tab).trim();
-        const sha = line.slice(tab + 1).trim();
-        if (!sha) return;
-        let key;
-        if (refname.startsWith('refs/heads/')) {
-          key = refname.slice('refs/heads/'.length);
-        } else if (refname.startsWith('refs/remotes/')) {
-          key = 'remotes/' + refname.slice('refs/remotes/'.length);
-        }
-        if (key) branchShas[key] = sha;
-      });
-    } catch (e) { /* ignore */ }
+    const { tracking, branchShas } = await readRefInfo(git);
 
     return {
       success: true,
@@ -593,7 +554,68 @@ ipcMain.handle('git:fetch', async (event, { repoPath }) => {
   }
 });
 
+// Cheap ref snapshot (ahead/behind + branch tips). Optionally fetches first so
+// the numbers reflect the remote's latest state. Used for background refresh.
+ipcMain.handle('git:refs', async (event, { repoPath, fetch }) => {
+  try {
+    const git = simpleGit(repoPath);
+    if (fetch) {
+      try { await git.env({ ...process.env, GIT_TERMINAL_PROMPT: '0' }).fetch(['--all', '--prune']); }
+      catch (e) { /* offline / auth failure: still report local refs */ }
+    }
+    const { tracking, branchShas } = await readRefInfo(git);
+    return { success: true, tracking, branchShas };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+// Per-branch ahead/behind vs. upstream (git's own tracking info) plus full
+// 40-char SHAs keyed by the branch name as the sidebar stores it:
+//   local  refs/heads/main            → 'main'
+//   remote refs/remotes/origin/feat   → 'remotes/origin/feat'
+async function readRefInfo(git) {
+  const tracking = {};
+  const branchShas = {};
+  try {
+    const raw = await git.raw([
+      'for-each-ref', '--format=%(refname:short)%09%(upstream:track)', 'refs/heads',
+    ]);
+    raw.split('\n').forEach(line => {
+      const tab = line.indexOf('\t');
+      if (tab < 0) return;
+      const name = line.slice(0, tab);
+      const track = line.slice(tab + 1);
+      const ahead = /ahead (\d+)/.exec(track);
+      const behind = /behind (\d+)/.exec(track);
+      if (name) tracking[name] = { ahead: ahead ? +ahead[1] : 0, behind: behind ? +behind[1] : 0 };
+    });
+  } catch (e) { /* no upstreams */ }
+
+  try {
+    const refOut = await git.raw([
+      'for-each-ref', '--format=%(refname)\t%(objectname)', 'refs/heads', 'refs/remotes',
+    ]);
+    refOut.split('\n').forEach(line => {
+      const tab = line.indexOf('\t');
+      if (tab < 0) return;
+      const refname = line.slice(0, tab).trim();
+      const sha = line.slice(tab + 1).trim();
+      if (!sha) return;
+      let key;
+      if (refname.startsWith('refs/heads/')) {
+        key = refname.slice('refs/heads/'.length);
+      } else if (refname.startsWith('refs/remotes/')) {
+        key = 'remotes/' + refname.slice('refs/remotes/'.length);
+      }
+      if (key) branchShas[key] = sha;
+    });
+  } catch (e) { /* ignore */ }
+
+  return { tracking, branchShas };
+}
 
 function parseRawLog(raw) {
   const entries = raw.split('---END---').filter(e => e.trim());
