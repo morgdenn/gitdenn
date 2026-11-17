@@ -1533,8 +1533,8 @@ function renderSideBySide(model) {
   });
   state.dvChanges = changes;
   state.dvPos = -1;
-  return `<div class="sbs-grid"><div class="sbs-pane">${left.join('')}</div>` +
-         `<div class="sbs-pane">${right.join('')}</div></div>`;
+  return `<div class="sbs-pane"><div class="sbs-lines">${left.join('')}</div></div>` +
+         `<div class="sbs-pane"><div class="sbs-lines">${right.join('')}</div></div>`;
 }
 
 function stepDiffChange(dir) {
@@ -1584,7 +1584,12 @@ async function showFileDiff() {
     return;
   }
   $('dv-body').innerHTML = renderSideBySide(model);
-  $('dv-body').scrollTop = 0;
+  // Keep the vertical scroll of the two panes in lockstep.
+  const panes = $('dv-body').querySelectorAll('.sbs-pane');
+  panes.forEach((pane, i) => pane.addEventListener('scroll', () => {
+    const other = panes[1 - i];
+    if (other.scrollTop !== pane.scrollTop) other.scrollTop = pane.scrollTop;
+  }));
   stepDiffChange(1); // jump to the first change
 }
 
