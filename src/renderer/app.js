@@ -1543,7 +1543,8 @@ function stepDiffChange(dir) {
   let pos = (state.dvPos == null ? -1 : state.dvPos) + dir;
   pos = Math.max(0, Math.min(list.length - 1, pos));
   state.dvPos = pos;
-  $('dv-body').scrollTop = Math.max(0, list[pos] * SBS_ROW_H - 60);
+  const pane = document.querySelector('#dv-body .sbs-pane');
+  if (pane) pane.scrollTop = Math.max(0, list[pos] * SBS_ROW_H - 60);
 }
 
 async function showFileDiff() {

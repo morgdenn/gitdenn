@@ -580,26 +580,27 @@ body.row-resizing { cursor: row-resize; user-select: none; }
 #dv-stats .add { color: var(--green); }
 #dv-stats .del { color: var(--pink, #f92672); }
 #dv-btns { display: flex; gap: 6px; }
-#dv-body { flex: 1; overflow: auto; min-height: 0; position: relative; }
-#dv-body::-webkit-scrollbar { width: 10px; height: 10px; }
-#dv-body::-webkit-scrollbar-track { background: transparent; }
-#dv-body::-webkit-scrollbar-thumb { background: var(--border-lt); border-radius: 5px; }
+#dv-body { flex: 1; display: flex; overflow: hidden; min-height: 0; }
 .dv-msg { padding: 20px; font-size: 12px; color: var(--text-muted); }
-/* One scroll container for both axes; two equal columns that grow with the
-   longest line so old/new stay aligned. */
-.sbs-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
-  min-width: 100%; width: max-content;
+/* Two equal panes, each its own scroller (vertical scroll is kept in sync by
+   JS, horizontal is independent) so a long line on one side can't push the
+   other off-screen. */
+.sbs-pane {
+  flex: 1 1 0; min-width: 0; overflow: auto;
   font-family: var(--font-mono); font-size: 12px;
 }
 .sbs-pane + .sbs-pane { border-left: 1px solid var(--border-lt); }
+.sbs-pane::-webkit-scrollbar { width: 10px; height: 10px; }
+.sbs-pane::-webkit-scrollbar-track { background: transparent; }
+.sbs-pane::-webkit-scrollbar-thumb { background: var(--border-lt); border-radius: 5px; }
+.sbs-lines { min-width: max-content; }
 .sr { display: flex; height: 18px; line-height: 18px; white-space: pre; tab-size: 4; }
 .sr .sn {
   flex: 0 0 48px; width: 48px;
   text-align: right; padding-right: 8px; color: var(--text-dim);
   background: var(--bg-deep); user-select: none;
 }
-.sbs-pane:first-child .sn { position: sticky; left: 0; z-index: 1; }
+.sr .sn { position: sticky; left: 0; z-index: 1; }
 .sr .st { flex: 1; padding: 0 8px; color: var(--text-sec); user-select: text; }
 .sr-del { background: rgba(249,38,114,0.13); }
 .sr-del .sn { background: #3a2230; color: var(--text-sec); }
