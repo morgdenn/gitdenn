@@ -1533,8 +1533,8 @@ function renderSideBySide(model) {
   });
   state.dvChanges = changes;
   state.dvPos = -1;
-  return `<div class="sbs-pane"><div class="sbs-lines">${left.join('')}</div></div>` +
-         `<div class="sbs-pane"><div class="sbs-lines">${right.join('')}</div></div>`;
+  return `<div class="sbs-grid"><div class="sbs-pane">${left.join('')}</div>` +
+         `<div class="sbs-pane">${right.join('')}</div></div>`;
 }
 
 function stepDiffChange(dir) {
@@ -1584,7 +1584,6 @@ async function showFileDiff() {
   }
   $('dv-body').innerHTML = renderSideBySide(model);
   $('dv-body').scrollTop = 0;
-  // Keep the two panes' horizontal scroll independent but start both at left.
   stepDiffChange(1); // jump to the first change
 }
 
