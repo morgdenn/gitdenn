@@ -247,13 +247,15 @@ function bindEvents() {
   // Clicking a file row (but not its stage/unstage button) opens its quick view
   on('detail-diff', 'click', '.wd-file', (el, e) => {
     if (e.target.closest('[data-act]')) return;
-    state.wipViewFile = {
+    state.fileDiff = {
+      wip: true,
       file: el.dataset.path,
       staged: el.dataset.staged === 'true',
       untracked: el.dataset.untracked === 'true',
     };
-    renderWipDetail();
+    showFileDiff();
   });
+  $('dv-discard').addEventListener('click', discardViewedFile);
   $('detail-diff').addEventListener('input', e => {
     if (e.target.id === 'commit-msg-input') state.commitMsg = e.target.value;
   });
@@ -1397,7 +1399,6 @@ async function selectCommit(sha, idx) {
   detailContent.style.display = 'block';
 
   if (commit.isWip) {
-    state.wipViewFile = null; // selecting the node shows the staging list
     await renderWipDetail();
     return;
   }
@@ -1446,7 +1447,7 @@ function closeFileDiff() {
   state.fileDiff = null;
   const v = $('diff-view');
   if (v) v.style.display = 'none';
-  document.querySelectorAll('.diff-stat-line.active').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.diff-stat-line.active, .wd-file.active').forEach(el => el.classList.remove('active'));
 }
 
 // Parse a unified diff into aligned left/right rows for side-by-side display.
@@ -1555,13 +1556,23 @@ async function showFileDiff() {
   $('dv-title').textContent = v.oldFile && v.oldFile !== v.file ? `${v.oldFile}  →  ${v.file}` : v.file;
   $('dv-stats').innerHTML = '';
   $('dv-mode').textContent = state.diffMode === 'full' ? 'Changes only' : 'Full file';
+  $('dv-discard').style.display = v.wip ? '' : 'none';
   $('dv-body').innerHTML = '<div class="dv-msg">Loading diff…</div>';
   document.querySelectorAll('.diff-stat-line').forEach(el => {
-    el.classList.toggle('active', el.dataset.idx === String(v.idx));
+    el.classList.toggle('active', !v.wip && el.dataset.idx === String(v.idx));
+  });
+  document.querySelectorAll('.wd-file').forEach(el => {
+    el.classList.toggle('active', !!v.wip && el.dataset.path === v.file &&
+      el.dataset.staged === String(v.staged));
   });
 
+  // Commit files and working-directory files load through different handlers.
+  const fetchDiff = ctx => v.wip
+    ? window.gitApp.fileDiff(state.repoPath, v.file, v.staged, v.untracked, ctx)
+    : window.gitApp.commitFileDiff(state.repoPath, v.sha, v.file, v.oldFile, ctx);
+
   let mode = state.diffMode;
-  let res = await window.gitApp.commitFileDiff(state.repoPath, v.sha, v.file, v.oldFile, mode);
+  let res = await fetchDiff(mode);
   if (state.fileDiff !== v) return; // user moved on
   if (!res.success) {
     $('dv-body').innerHTML = `<div class="dv-msg">Could not load diff: ${escHtml(res.error)}</div>`;
@@ -1570,7 +1581,7 @@ async function showFileDiff() {
   let model = parseSideBySide(res.diff);
   let note = '';
   if (mode === 'full' && model.rows.length > SBS_MAX_FULL_ROWS) {
-    res = await window.gitApp.commitFileDiff(state.repoPath, v.sha, v.file, v.oldFile, 'hunks');
+    res = await fetchDiff('hunks');
     if (state.fileDiff !== v) return;
     if (res.success) { model = parseSideBySide(res.diff); note = ' (large file: changes only)'; }
   }
@@ -1611,9 +1622,6 @@ async function renderWipDetail() {
   $('detail-date').textContent = '';
   $('detail-sha').textContent = '';
   $('detail-refs').innerHTML = '';
-
-  // Quick view: a single file's diff, opened by clicking a file row.
-  if (state.wipViewFile) return renderFileQuickView();
 
   const res = await window.gitApp.status(state.repoPath);
   const files = res.success ? res.files : [];
@@ -1672,52 +1680,6 @@ async function renderWipDetail() {
   `);
 }
 
-// Quick view: a single file's unified diff inside the detail panel.
-async function renderFileQuickView() {
-  const { file, staged, untracked } = state.wipViewFile;
-  $('detail-subject').textContent = file.split('/').pop();
-  $('detail-body').textContent = '';
-  const header = html`
-    <div class="qv-head">
-      <button class="wd-bulk" data-act="wip-back">← Back</button>
-      <span class="qv-file" title="${file}">${file}</span>
-    </div>`;
-  render('detail-diff', html`<div class="wd">${header}<div class="qv-loading">Loading diff…</div></div>`);
-
-  const res = await window.gitApp.fileDiff(state.repoPath, file, staged, untracked);
-  // Guard against a stale response if the user navigated away meanwhile.
-  if (!state.wipViewFile || state.wipViewFile.file !== file) return;
-  render('detail-diff', html`
-    <div class="wd">
-      ${header}
-      <div class="qv-diff">${raw(renderUnifiedDiff(res.success ? res.diff : ''))}</div>
-      <div class="qv-actions split-wrap">
-        <div class="split-btn">
-          <button class="primary-btn split-main" data-act="view-toggle">${staged ? 'Unstage file' : 'Stage file'}</button>
-          <button class="primary-btn split-caret" data-act="view-menu" title="More actions">▾</button>
-        </div>
-        <div class="split-menu" id="qv-menu" hidden>
-          <button class="split-menu-item" data-act="discard">Discard changes</button>
-        </div>
-      </div>
-    </div>
-  `);
-}
-
-// Render a unified diff string as coloured lines (drops the git file headers).
-function renderUnifiedDiff(text) {
-  if (!text || !text.trim()) return '<div class="wd-empty">No textual changes</div>';
-  const skip = /^(diff --git|index |--- |\+\+\+ |new file|deleted file|old mode|new mode|similarity |rename |copy |Binary files)/;
-  return text.split('\n').map(line => {
-    if (skip.test(line)) return '';
-    let cls = 'dl-ctx';
-    if (line.startsWith('@@')) cls = 'dl-hunk';
-    else if (line.startsWith('+')) cls = 'dl-add';
-    else if (line.startsWith('-')) cls = 'dl-del';
-    return `<div class="dl ${cls}">${escHtml(line || ' ')}</div>`;
-  }).join('');
-}
-
 // Re-fetch status and refresh the WIP detail + toolbar chips (no graph change).
 async function refreshStatus() {
   const res = await window.gitApp.status(state.repoPath);
@@ -1738,17 +1700,7 @@ async function handleWipAction(act, path) {
     if (dd) dd.hidden = !dd.hidden;
     return;
   }
-  if (act === 'wip-back') { state.wipViewFile = null; return renderWipDetail(); }
-  if (act === 'view-menu') { const m = $('qv-menu'); if (m) m.hidden = !m.hidden; return; }
-  if (act === 'discard') return discardViewedFile();
-  if (act === 'view-toggle') {
-    const v = state.wipViewFile;
-    if (!v) return;
-    if (v.staged) await window.gitApp.unstage(state.repoPath, [v.file]);
-    else          await window.gitApp.stage(state.repoPath, [v.file]);
-    state.wipViewFile = null; // return to the staging list
-    return refreshStatus();
-  }
+  if (act === 'stage' || act === 'unstage' || act === 'stage-all' || act === 'unstage-all') closeFileDiff(); // file moves between lists
   if (act === 'stage')        await window.gitApp.stage(state.repoPath, [path]);
   else if (act === 'unstage') await window.gitApp.unstage(state.repoPath, [path]);
   else if (act === 'stage-all')   await window.gitApp.stageAll(state.repoPath);
@@ -1843,13 +1795,13 @@ async function doReword() {
 
 // Discard all changes to the currently-viewed file (destructive → confirm).
 async function discardViewedFile() {
-  const v = state.wipViewFile;
-  if (!v) return;
+  const v = state.fileDiff;
+  if (!v || !v.wip) return;
   const ok = confirm(`Discard all changes to ${v.file}?\n\nThis cannot be undone.`);
   if (!ok) return;
   const res = await window.gitApp.discard(state.repoPath, v.file, v.untracked);
   if (!res.success) return alert(`Discard failed: ${res.error}`);
-  state.wipViewFile = null;
+  closeFileDiff();
   showToast('Discarded changes');
   await refreshWorkingState(); // change count dropped → update graph WIP node too
 }

@@ -261,21 +261,25 @@ ipcMain.handle('git:status', async (event, { repoPath }) => {
 });
 
 // Unified diff for a single working-directory file
-ipcMain.handle('git:fileDiff', async (event, { repoPath, file, staged, untracked }) => {
+// `context` 'full' returns the whole file with changes marked (side-by-side).
+ipcMain.handle('git:fileDiff', async (event, { repoPath, file, staged, untracked, context }) => {
   try {
     const git = simpleGit(repoPath);
+    const unified = `--unified=${context === 'full' ? 1000000 : 5}`;
     let diff;
     if (staged) {
-      diff = await git.diff(['--cached', '--', file]);
+      diff = await git.diff(['--cached', '--no-color', unified, '--', file]);
     } else if (untracked) {
       // Untracked files have no git diff — show their contents as all additions.
       let content = '';
       try { content = fs.readFileSync(path.join(repoPath, file), 'utf8'); } catch (e) {}
       const lines = content.split('\n');
       if (lines.length && lines[lines.length - 1] === '') lines.pop();
-      diff = '@@ new file @@\n' + lines.map(l => '+' + l).join('\n');
+      diff = lines.length
+        ? `@@ -0,0 +1,${lines.length} @@\n` + lines.map(l => '+' + l).join('\n')
+        : '';
     } else {
-      diff = await git.diff(['--', file]);
+      diff = await git.diff(['--no-color', unified, '--', file]);
     }
     return { success: true, diff };
   } catch (err) {

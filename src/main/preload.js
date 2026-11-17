@@ -16,7 +16,7 @@ contextBridge.exposeInMainWorld('gitApp', {
   deleteBranch: (repoPath, name) => ipcRenderer.invoke('git:deleteBranch', { repoPath, name }),
   renameBranch: (repoPath, oldName, newName) => ipcRenderer.invoke('git:renameBranch', { repoPath, oldName, newName }),
   status: (repoPath) => ipcRenderer.invoke('git:status', { repoPath }),
-  fileDiff: (repoPath, file, staged, untracked) => ipcRenderer.invoke('git:fileDiff', { repoPath, file, staged, untracked }),
+  fileDiff: (repoPath, file, staged, untracked, context) => ipcRenderer.invoke('git:fileDiff', { repoPath, file, staged, untracked, context }),
   discard: (repoPath, file, untracked) => ipcRenderer.invoke('git:discard', { repoPath, file, untracked }),
   stage: (repoPath, paths) => ipcRenderer.invoke('git:stage', { repoPath, paths }),
   unstage: (repoPath, paths) => ipcRenderer.invoke('git:unstage', { repoPath, paths }),

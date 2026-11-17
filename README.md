@@ -40,7 +40,7 @@
 - A **WIP node** at the top of the graph for uncommitted changes, refreshed automatically
 - Detail panel lists **Changes** and **Staged** files; stage/unstage individually or all
 - **Commit** staged changes with a message box
-- **Quick-view diff** — click a file to see its unified diff, with **Stage/Unstage** and **Discard** (split button)
+- **Side-by-side diff for uncommitted files** — click a changed file to open the same full-width side-by-side diff used for commits, with a **Discard** button; stage/unstage via the row buttons
 
 **UI**
 - Monokai-inspired dark theme
@@ -112,7 +112,7 @@ The **graph layout engine** in `app.js` implements a lane-allocation algorithm:
 - [x] Stage/unstage files
 - [x] Commit from UI
 - [x] Push / pull
-- [x] Quick-view file diff (unified) with stage/discard
+- [x] Side-by-side file diff for uncommitted files (with discard)
 - [x] Create branch
 - [ ] Side-by-side diff opened in tabs
 - [x] Branch delete / rename

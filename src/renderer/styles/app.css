@@ -1014,6 +1014,7 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   cursor: pointer;
 }
 .wd-file:hover { background: var(--bg-hover); }
+.wd-file.active { background: var(--bg-hover); box-shadow: inset 2px 0 0 var(--accent, #4c8dff); }
 .wd-status {
   flex-shrink: 0;
   width: 16px;
