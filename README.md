@@ -25,11 +25,13 @@
 - Commit nodes rendered as **author-initial avatars**, coloured by lane
 - **Right-angle (orthogonal) edge routing** with rounded corners
 - Per-lane row tint; virtualised painting (only visible rows)
-- **Commit detail panel** — author, date, SHA, ref badges, file diff stats
+- **Commit detail panel** — author, date, SHA, ref badges, **full commit message**, file diff stats
+- **Multi-select** commits (Ctrl/Cmd-click, Shift-click range) and **squash** them into one via right-click (consecutive, non-merge commits on the current branch)
 
 **Branches**
 - Sidebar **branch tree** grouped by `/`, split into Local / Remote (resizable divider)
-- **Ahead/behind** indicators vs. upstream (`N↑` / `N↓`)
+- **Ahead/behind** indicators vs. upstream (`N↑` / `N↓`), kept live: local refs re-checked every 5s and a background `git fetch` every 60s
+- Right-click a local branch to **Pull branch** (fast-forwards it even if it isn't checked out), copy its name, rename, or delete
 - Double-click a remote branch to check it out locally; double-click a local branch to switch
 - **Create a branch**, **fetch**, **pull**, and **push** (auto-sets upstream) from the toolbar
 
@@ -112,7 +114,9 @@ The **graph layout engine** in `app.js` implements a lane-allocation algorithm:
 - [x] Quick-view file diff (unified) with stage/discard
 - [x] Create branch
 - [ ] Side-by-side diff opened in tabs
-- [ ] Branch delete / rename
+- [x] Branch delete / rename
+- [x] Pull any branch, live ahead/behind with background fetch
+- [x] Squash commits
 - [ ] Stash management
 - [ ] Search commits
 - [ ] Drag-and-drop rebase
