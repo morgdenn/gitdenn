@@ -40,6 +40,7 @@
 - A **WIP node** at the top of the graph for uncommitted changes, refreshed automatically
 - Detail panel lists **Changes** and **Staged** files; stage/unstage individually or all
 - **Commit** staged changes with a message box
+- **✨ Generate commit message** — a local heuristic (no AI service): learns your repo's commit style from recent history, takes the ticket id (e.g. `PROJ-123`) from the branch name, names touched functions/classes from the diff, detects version bumps and whitespace-/comment-only changes, and itemises multi-file commits in the body. Logic lives in `src/main/commit-message.js`.
 - **Side-by-side diff for uncommitted files** — click a changed file to open the same full-width side-by-side diff used for commits, with a **Discard** button; stage/unstage via the row buttons
 
 **UI**

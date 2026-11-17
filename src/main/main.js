@@ -375,97 +375,76 @@ ipcMain.handle('git:pushForce', async (event, { repoPath }) => {
 });
 
 // ─── Smart (heuristic) commit message generation ─────────────────────────────
-// Conventional-commit type rules by path/extension. First match wins.
-const COMMIT_TYPE_RULES = [
-  [/(^|\/)tests?\//, 'test'],
-  [/(^|\/)__tests__\//, 'test'],
-  [/\.(test|spec)\.[jt]sx?$/, 'test'],
-  [/(^|\/)\.github\/workflows\//, 'ci'],
-  [/(Jenkinsfile|\.gitlab-ci\.ya?ml|buildspec\.ya?ml)$/, 'ci'],
-  [/\.tf$/, 'infra'],
-  [/(^|\/)docs?\/|README|CHANGELOG|\.md$/i, 'docs'],
-  [/(package(-lock)?\.json|requirements.*\.txt|Pipfile|go\.(mod|sum)|Gemfile|pom\.xml|\.csproj$)/, 'build'],
-  [/Dockerfile|docker-compose\.ya?ml/, 'build'],
-  [/\.(ya?ml|json|toml|ini|cfg|env)$/, 'chore'],
-];
-const STATUS_ACTION = { A: 'add', D: 'remove', M: 'update', R: 'rename', C: 'copy' };
-const FIX_KEYWORDS = /\b(fix(e[sd])?|bug|error|issue|crash|resolve[sd]?|patch)\b/i;
+// Gathers git facts here; the actual wording lives in commit-message.js (pure).
+const { buildCommitMessage } = require('./commit-message');
 
-function classifyCommitFile(p) {
-  for (const [re, type] of COMMIT_TYPE_RULES) if (re.test(p)) return type;
-  return null; // ordinary source — decided later from status/keywords
+// Parse `git ... --name-status -z` into [{ status, path, oldPath }].
+function parseNameStatusZ(out) {
+  const t = out.split('\0');
+  const files = [];
+  for (let i = 0; i < t.length; i++) {
+    const code = (t[i] || '').replace(/^\n+/, '');
+    if (!code) continue;
+    if (code[0] === 'R' || code[0] === 'C') { files.push({ status: code[0], oldPath: t[i + 1], path: t[i + 2] }); i += 2; }
+    else { files.push({ status: code[0], path: t[i + 1], oldPath: null }); i += 1; }
+  }
+  return files;
 }
 
-function scopeFromPath(p) {
-  const parts = p.split('/');
-  if (parts.length === 1) return null;
-  for (const seg of parts.slice(0, -1)) if (!['src', 'lib', 'app', '.'].includes(seg)) return seg;
-  return parts[0];
-}
-
-function topKey(counts) {
-  let best = null, n = -1;
-  for (const [k, v] of Object.entries(counts)) if (v > n) { best = k; n = v; }
-  return best;
-}
-
-// Suggest a Conventional-Commits subject. Without `sha`, uses the staged
-// changes; with `sha`, uses that commit's own changes (for rewording).
+// Suggest a commit message. Without `sha`, describes the staged changes (or the
+// working-tree changes if nothing is staged); with `sha`, that commit's changes.
 ipcMain.handle('git:suggestCommit', async (event, { repoPath, sha }) => {
   try {
     const git = simpleGit(repoPath);
-    let nameStatus, diffText;
+    const safe = async fn => { try { return await fn(); } catch (e) { return ''; } };
+    const NS = ['--name-status', '-z', '-M'];
+    const NUM = ['--numstat', '-z', '-M'];
+    let nameStatus, numstat, diffText, extraUntracked = [];
+
     if (sha) {
-      nameStatus = await git.raw(['show', '--name-status', '--format=', sha]);
-      diffText = await git.raw(['show', '--format=', sha]);
+      const f = ['--format=', '-m', '--first-parent', '-M'];
+      nameStatus = await git.raw(['show', ...f, '--name-status', '-z', sha]);
+      numstat = await git.raw(['show', ...f, '--numstat', '-z', sha]);
+      diffText = await git.raw(['show', ...f, sha]);
     } else {
-      nameStatus = await git.diff(['--cached', '--name-status']);
-      diffText = await git.diff(['--cached']);
-      if (!nameStatus.trim()) {
-        // Nothing staged: describe the working-tree changes instead (tracked
-        // edits vs HEAD, plus untracked files as additions).
-        try {
-          nameStatus = await git.raw(['diff', 'HEAD', '--name-status']);
-          diffText = await git.raw(['diff', 'HEAD']);
-        } catch (e) { nameStatus = ''; diffText = ''; } // no HEAD yet
-        const untracked = (await git.raw(['ls-files', '--others', '--exclude-standard'])).split('\n').filter(Boolean);
-        nameStatus += untracked.map(f => `A\t${f}`).join('\n');
+      nameStatus = await git.raw(['diff', '--cached', ...NS]);
+      numstat = await git.raw(['diff', '--cached', ...NUM]);
+      diffText = await git.raw(['diff', '--cached', '-M']);
+      if (!nameStatus.replace(/\0/g, '').trim()) {
+        // Nothing staged: describe working-tree changes (tracked edits vs HEAD
+        // plus untracked files as additions).
+        nameStatus = await safe(() => git.raw(['diff', 'HEAD', ...NS]));
+        numstat = await safe(() => git.raw(['diff', 'HEAD', ...NUM]));
+        diffText = await safe(() => git.raw(['diff', 'HEAD', '-M']));
+        extraUntracked = (await git.raw(['ls-files', '--others', '--exclude-standard'])).split('\n').filter(Boolean);
       }
     }
 
-    const files = [];
-    for (const line of nameStatus.split('\n')) {
-      if (!line.trim()) continue;
-      const parts = line.split('\t');
-      files.push({ code: parts[0][0], path: parts[parts.length - 1] });
+    const stats = parseNumstatZ(numstat);
+    const files = parseNameStatusZ(nameStatus).map((f, i) => ({
+      ...f, adds: stats[i] ? stats[i].adds : 0, dels: stats[i] ? stats[i].dels : 0,
+    }));
+    for (const u of extraUntracked) {
+      let lines = 0;
+      try {
+        const full = path.join(repoPath, u);
+        if (fs.statSync(full).size < 1e6) lines = fs.readFileSync(full, 'utf8').split('\n').length;
+      } catch (e) { /* binary / unreadable */ }
+      files.push({ status: 'A', path: u, oldPath: null, adds: lines, dels: 0 });
     }
     if (!files.length) return { success: true, message: '' };
 
-    const fixSignal = FIX_KEYWORDS.test(diffText);
-    const typeCount = {}, scopeCount = {}, actionCount = {};
-    for (const { code, path: p } of files) {
-      let type = classifyCommitFile(p);
-      if (type === null) {
-        if (code === 'D') type = 'chore';
-        else if (code === 'A') type = 'feat';
-        else type = fixSignal ? 'fix' : 'refactor';
-      }
-      typeCount[type] = (typeCount[type] || 0) + 1;
-      const scope = scopeFromPath(p);
-      if (scope) scopeCount[scope] = (scopeCount[scope] || 0) + 1;
-      const action = STATUS_ACTION[code] || 'update';
-      actionCount[action] = (actionCount[action] || 0) + 1;
+    // Context for style/ticket learning (only for new commits).
+    let branch = '', history = [], mergeMsg = '';
+    if (!sha) {
+      branch = (await safe(() => git.raw(['rev-parse', '--abbrev-ref', 'HEAD']))).trim();
+      history = (await safe(() => git.raw(['log', '-n', '40', '--format=%s']))).split('\n').filter(Boolean);
+      const mm = (await safe(() => git.raw(['rev-parse', '--git-path', 'MERGE_MSG']))).trim();
+      if (mm) { try { mergeMsg = fs.readFileSync(path.resolve(repoPath, mm), 'utf8').replace(/^#.*$/gm, '').trim(); } catch (e) { /* none */ } }
     }
 
-    const dominantType = topKey(typeCount);
-    const dominantScope = Object.keys(scopeCount).length ? topKey(scopeCount) : null;
-    const detail = files.length === 1
-      ? `${STATUS_ACTION[files[0].code] || 'update'} ${files[0].path}`
-      : `${topKey(actionCount)} ${files.length} files`;
-
-    const scopePart = dominantScope ? `(${dominantScope})` : '';
-    const subject = `${dominantType}${scopePart}: ${detail}`.slice(0, 72);
-    return { success: true, message: subject };
+    const r = buildCommitMessage({ files, diffText: diffText.slice(0, 600000), branch, history, mergeMsg });
+    return { success: true, message: r.message, subject: r.subject, body: r.body };
   } catch (err) {
     return { success: false, error: err.message };
   }
