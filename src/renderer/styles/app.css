@@ -820,7 +820,13 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   border: 1px solid var(--border-lt);
 }
 #detail-meta { flex: 1; min-width: 0; }
-#detail-subject { font-size: 13px; font-weight: 500; line-height: 1.4; color: var(--text-pri); margin-bottom: 4px; }
+#detail-body {
+  white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 1.45;
+  color: var(--text-sec, var(--text-muted)); margin: 2px 0 6px;
+  max-height: 260px; overflow-y: auto; user-select: text;
+}
+#detail-body:empty { display: none; }
+#detail-subject {font-size: 13px; font-weight: 500; line-height: 1.4; color: var(--text-pri); margin-bottom: 4px; }
 #detail-actions:not(:empty) { margin: 10px 0; }
 .reword { display: flex; flex-direction: column; gap: 8px; }
 .reword textarea {

@@ -1394,6 +1394,13 @@ async function selectCommit(sha, idx) {
   const initials = commit.authorName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   $('detail-avatar').textContent = initials;
   $('detail-subject').textContent = commit.subject;
+  $('detail-body').textContent = '';
+  // Load the full message; show only the part after the subject line.
+  window.gitApp.commitMessage(state.repoPath, sha).then(r => {
+    if (!r.success || state.selectedSha !== sha) return;
+    const body = r.message.split('\n').slice(1).join('\n').replace(/^\s*\n/, '').trim();
+    $('detail-body').textContent = body;
+  });
   $('detail-author').textContent = commit.authorName + ' <' + commit.authorEmail + '>';
   $('detail-date').textContent = new Date(commit.timestamp * 1000).toLocaleString();
   $('detail-sha').textContent = commit.sha;
@@ -1425,6 +1432,7 @@ function statusLabel(ch, untracked) {
 async function renderWipDetail() {
   $('detail-avatar').textContent = '✎';
   $('detail-subject').textContent = 'Uncommitted changes';
+  $('detail-body').textContent = '';
   $('detail-date').textContent = '';
   $('detail-sha').textContent = '';
   $('detail-refs').innerHTML = '';
@@ -1493,6 +1501,7 @@ async function renderWipDetail() {
 async function renderFileQuickView() {
   const { file, staged, untracked } = state.wipViewFile;
   $('detail-subject').textContent = file.split('/').pop();
+  $('detail-body').textContent = '';
   const header = html`
     <div class="qv-head">
       <button class="wd-bulk" data-act="wip-back">← Back</button>
