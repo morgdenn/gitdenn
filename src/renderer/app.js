@@ -589,6 +589,7 @@ async function openRepo() {
 // ─── Load Repo ────────────────────────────────────────────────────────────────
 async function loadRepo(repoPath) {
   if (!repoPath) return;
+  const repoChanged = state.repoPath !== repoPath;
   state.repoPath = repoPath;
 
   // Show repo view with loading overlay
@@ -622,6 +623,16 @@ async function loadRepo(repoPath) {
     ? [buildWipCommit(changed), ...result.commits]
     : result.commits;
 
+  // Refresh the right-hand detail panel: a different repo (or a selection that
+  // no longer exists after a checkout/pull/squash) must not leave stale details.
+  const selStillThere = state.selectedSha && state.commits.some(c => c.sha === state.selectedSha);
+  if (repoChanged || !selStillThere) {
+    resetDetailPanel();
+    if (repoChanged) graphScroll.scrollTop = 0;
+  } else if (state.selectedSha === '__WIP__') {
+    renderWipDetail();
+  }
+
   // Update toolbar
   const repoName = repoPath.split(/[\\/]/).pop();
   $('repo-name-display').textContent = repoName;
@@ -637,6 +648,17 @@ async function loadRepo(repoPath) {
   state.graphData = graphData;
   renderCommitRows(graphData);
   paintGraph(graphData);
+}
+
+// Clear selection and show the "Select a commit" placeholder in the detail panel.
+function resetDetailPanel() {
+  state.selectedSha = null;
+  state.multiSel = [];
+  state.wipViewFile = null;
+  state.commitFiles = [];
+  closeFileDiff();
+  detailContent.style.display = 'none';
+  detailPlaceholder.style.display = 'flex';
 }
 
 // A synthetic "WIP" commit representing uncommitted changes, linked to HEAD.
@@ -858,6 +880,7 @@ async function checkoutRemoteBranch(remoteBranch) {
     alert(`Checkout failed: ${result.error}`);
     return;
   }
+  resetDetailPanel(); // new branch → drop the old commit's details
   await loadRepo(state.repoPath); // refresh branches, current branch, and graph
   showToast(`Checked out ${result.branch}`);
 }
@@ -873,6 +896,7 @@ async function checkoutLocalBranch(branch) {
     alert(`Checkout failed: ${result.error}`);
     return;
   }
+  resetDetailPanel(); // new branch → drop the old commit's details
   await loadRepo(state.repoPath); // refresh branches, current branch, and graph
   showToast(`Switched to ${branch}`);
 }
