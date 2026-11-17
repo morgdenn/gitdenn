@@ -146,13 +146,55 @@ ipcMain.handle('git:log', async (event, { repoPath }) => {
 ipcMain.handle('git:commitDiff', async (event, { repoPath, sha }) => {
   try {
     const git = simpleGit(repoPath);
-    const diff = await git.show([sha, '--stat', '--format=']);
-    const fullDiff = await git.show([sha, '--format=']);
-    return { success: true, stat: diff, diff: fullDiff };
+    // -m --first-parent: for merge commits, diff against the first parent only.
+    const flags = ['--format=', '-M', '-m', '--first-parent'];
+    const diff = await git.show([sha, '--stat', ...flags]);
+    const fullDiff = await git.show([sha, ...flags]);
+    // Exact file paths (same order as --stat), including rename old/new paths.
+    const numstat = await git.raw(['show', sha, '--numstat', '-z', ...flags]);
+    const files = parseNumstatZ(numstat);
+    return { success: true, stat: diff, diff: fullDiff, files };
   } catch (err) {
     return { success: false, error: err.message };
   }
 });
+
+// Unified diff of one file within a commit. `context` 'full' returns the whole
+// file with changes marked (for side-by-side); anything else gives 5 lines of
+// context. For a rename, pass oldFile so git pairs the two paths.
+ipcMain.handle('git:commitFileDiff', async (event, { repoPath, sha, file, oldFile, context }) => {
+  try {
+    const git = simpleGit(repoPath);
+    const paths = oldFile && oldFile !== file ? [oldFile, file] : [file];
+    const unified = context === 'full' ? 1000000 : 5;
+    const diff = await git.raw([
+      'show', sha, '--format=', '-M', '-m', '--first-parent', '--no-color',
+      `--unified=${unified}`, '--', ...paths,
+    ]);
+    return { success: true, diff };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Parse `git show --numstat -z` output into [{ path, oldPath, adds, dels }].
+function parseNumstatZ(out) {
+  const tokens = out.split('\0');
+  const files = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const m = /^(-|\d+)\t(-|\d+)\t([\s\S]*)$/.exec(tokens[i].replace(/^\n+/, ''));
+    if (!m) continue;
+    const adds = m[1] === '-' ? 0 : +m[1];
+    const dels = m[2] === '-' ? 0 : +m[2];
+    if (m[3] === '') { // rename/copy: next two tokens are old, new
+      files.push({ path: tokens[i + 2], oldPath: tokens[i + 1], adds, dels });
+      i += 2;
+    } else {
+      files.push({ path: m[3], oldPath: null, adds, dels });
+    }
+  }
+  return files;
+}
 
 // Checkout a branch or commit
 ipcMain.handle('git:checkout', async (event, { repoPath, ref }) => {

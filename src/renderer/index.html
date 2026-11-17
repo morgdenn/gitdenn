@@ -309,6 +309,21 @@
               <canvas id="graph-canvas"></canvas>
               <div id="commit-rows"></div>
             </div>
+
+            <!-- Side-by-side file diff (covers the graph while open) -->
+            <div id="diff-view" style="display:none;">
+              <div id="dv-head">
+                <div id="dv-title"></div>
+                <div id="dv-stats"></div>
+                <div id="dv-btns">
+                  <button class="wd-bulk" id="dv-prev" title="Previous change">↑</button>
+                  <button class="wd-bulk" id="dv-next" title="Next change">↓</button>
+                  <button class="wd-bulk" id="dv-mode"></button>
+                  <button class="wd-bulk" id="dv-close" title="Close (Esc)">✕</button>
+                </div>
+              </div>
+              <div id="dv-body"></div>
+            </div>
           </div>
 
           <!-- Detail panel -->

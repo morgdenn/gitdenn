@@ -152,7 +152,7 @@ function bindEvents() {
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); hideRebaseModal(); hideSquashModal(); hideBranchCtxMenu(); hideCommitCtxMenu(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
+    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); hideRebaseModal(); hideSquashModal(); closeFileDiff(); hideBranchCtxMenu(); hideCommitCtxMenu(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'r') loadRepo(state.repoPath);
     // Ctrl/Cmd+Shift+E → open the repo in VS Code
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'e' || e.key === 'E')) {
@@ -198,6 +198,16 @@ function bindEvents() {
       selectCommit(sha, el.dataset.idx);
     }
     showCommitCtxMenu(e.clientX, e.clientY);
+  });
+
+  // Click a file in a commit's file list → side-by-side diff over the graph
+  on('detail-diff', 'click', '.diff-stat-line[data-idx]', el => openCommitFileDiff(+el.dataset.idx));
+  $('dv-close').addEventListener('click', closeFileDiff);
+  $('dv-prev').addEventListener('click', () => stepDiffChange(-1));
+  $('dv-next').addEventListener('click', () => stepDiffChange(1));
+  $('dv-mode').addEventListener('click', () => {
+    state.diffMode = state.diffMode === 'full' ? 'hunks' : 'full';
+    showFileDiff();
   });
 
   $('squash-cancel').addEventListener('click', hideSquashModal);
@@ -1371,6 +1381,7 @@ async function doSquash() {
 // ─── Select Commit ────────────────────────────────────────────────────────────
 async function selectCommit(sha, idx) {
   state.selectedSha = sha;
+  closeFileDiff();
 
   // Update row highlight
   applySelectionClasses();
@@ -1413,9 +1424,168 @@ async function selectCommit(sha, idx) {
 
   // Fetch diff
   const diff = await window.gitApp.commitDiff(state.repoPath, sha);
-  if (diff.success) {
-    renderDiff(diff.stat);
+  if (diff.success && state.selectedSha === sha) {
+    state.commitFiles = diff.files || [];
+    renderDiff(diff.stat, state.commitFiles);
   }
+}
+
+// ─── Side-by-side file diff (commit view) ─────────────────────────────────────
+const SBS_ROW_H = 18;          // keep in sync with .sr height in app.css
+const SBS_MAX_FULL_ROWS = 8000; // above this, fall back to "changes only"
+state.diffMode = 'full';
+
+function openCommitFileDiff(idx) {
+  const f = (state.commitFiles || [])[idx];
+  if (!f || !state.selectedSha) return;
+  state.fileDiff = { sha: state.selectedSha, file: f.path, oldFile: f.oldPath, idx };
+  showFileDiff();
+}
+
+function closeFileDiff() {
+  state.fileDiff = null;
+  const v = $('diff-view');
+  if (v) v.style.display = 'none';
+  document.querySelectorAll('.diff-stat-line.active').forEach(el => el.classList.remove('active'));
+}
+
+// Parse a unified diff into aligned left/right rows for side-by-side display.
+function parseSideBySide(text) {
+  const rows = [];
+  let adds = 0, dels = 0, binary = false;
+  let oldNo = 0, newNo = 0, inHunk = false;
+  let delBuf = [], addBuf = [];
+
+  const flush = () => {
+    const n = Math.max(delBuf.length, addBuf.length);
+    for (let i = 0; i < n; i++) {
+      const l = delBuf[i], r = addBuf[i];
+      const row = { t: 'chg', l: l || null, r: r || null, first: i === 0 };
+      if (l && r) markIntraLine(row);
+      rows.push(row);
+    }
+    delBuf = []; addBuf = [];
+  };
+
+  for (const line of text.split('\n')) {
+    if (!inHunk && /^Binary files /.test(line)) { binary = true; continue; }
+    const h = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$/.exec(line);
+    if (h) {
+      flush();
+      oldNo = +h[1]; newNo = +h[2];
+      // A hunk starting at line 1 needs no separator row.
+      if (inHunk || oldNo > 1 || newNo > 1) rows.push({ t: 'hunk', text: line });
+      inHunk = true;
+      continue;
+    }
+    if (!inHunk) continue;
+    const c = line[0];
+    if (c === '-') { delBuf.push({ n: oldNo++, s: line.slice(1) }); dels++; }
+    else if (c === '+') { addBuf.push({ n: newNo++, s: line.slice(1) }); adds++; }
+    else if (c === ' ') {
+      flush();
+      rows.push({ t: 'ctx', l: { n: oldNo++, s: line.slice(1) }, r: { n: newNo++, s: line.slice(1) } });
+    }
+    // '\ No newline at end of file' and blank trailer lines are ignored.
+  }
+  flush();
+  return { rows, adds, dels, binary };
+}
+
+// Highlight the differing middle of a paired removed/added line.
+function markIntraLine(row) {
+  const a = row.l.s, b = row.r.s;
+  let p = 0;
+  const max = Math.min(a.length, b.length);
+  while (p < max && a[p] === b[p]) p++;
+  let s = 0;
+  while (s < max - p && a[a.length - 1 - s] === b[b.length - 1 - s]) s++;
+  const longest = Math.max(a.length, b.length) || 1;
+  if ((p + s) / longest < 0.3) return; // mostly different: whole-line colour is enough
+  row.l.hl = [p, a.length - s];
+  row.r.hl = [p, b.length - s];
+}
+
+function sbsText(side) {
+  if (!side.hl || side.hl[0] >= side.hl[1]) return escHtml(side.s);
+  const [a, b] = side.hl;
+  return escHtml(side.s.slice(0, a)) + '<mark>' + escHtml(side.s.slice(a, b)) + '</mark>' + escHtml(side.s.slice(b));
+}
+
+function renderSideBySide(model) {
+  const left = [], right = [];
+  const cell = (cls, n, body) =>
+    `<div class="sr ${cls}"><span class="sn">${n == null ? '' : n}</span><span class="st">${body}</span></div>`;
+  const changes = [];
+  model.rows.forEach((row, i) => {
+    if (row.t === 'hunk') {
+      const t = escHtml(row.text);
+      left.push(cell('sr-hunk', '', t));
+      right.push(cell('sr-hunk', '', t));
+    } else if (row.t === 'ctx') {
+      left.push(cell('', row.l.n, escHtml(row.l.s)));
+      right.push(cell('', row.r.n, escHtml(row.r.s)));
+    } else {
+      if (row.first) changes.push(i);
+      left.push(row.l ? cell('sr-del', row.l.n, sbsText(row.l)) : cell('sr-empty', '', ''));
+      right.push(row.r ? cell('sr-add', row.r.n, sbsText(row.r)) : cell('sr-empty', '', ''));
+    }
+  });
+  state.dvChanges = changes;
+  state.dvPos = -1;
+  return `<div class="sbs-pane"><div class="sbs-lines">${left.join('')}</div></div>` +
+         `<div class="sbs-pane"><div class="sbs-lines">${right.join('')}</div></div>`;
+}
+
+function stepDiffChange(dir) {
+  const list = state.dvChanges || [];
+  if (!list.length) return;
+  let pos = (state.dvPos == null ? -1 : state.dvPos) + dir;
+  pos = Math.max(0, Math.min(list.length - 1, pos));
+  state.dvPos = pos;
+  $('dv-body').scrollTop = Math.max(0, list[pos] * SBS_ROW_H - 60);
+}
+
+async function showFileDiff() {
+  const v = state.fileDiff;
+  if (!v) return;
+  const view = $('diff-view');
+  view.style.display = 'flex';
+  $('dv-title').textContent = v.oldFile && v.oldFile !== v.file ? `${v.oldFile}  →  ${v.file}` : v.file;
+  $('dv-stats').innerHTML = '';
+  $('dv-mode').textContent = state.diffMode === 'full' ? 'Changes only' : 'Full file';
+  $('dv-body').innerHTML = '<div class="dv-msg">Loading diff…</div>';
+  document.querySelectorAll('.diff-stat-line').forEach(el => {
+    el.classList.toggle('active', el.dataset.idx === String(v.idx));
+  });
+
+  let mode = state.diffMode;
+  let res = await window.gitApp.commitFileDiff(state.repoPath, v.sha, v.file, v.oldFile, mode);
+  if (state.fileDiff !== v) return; // user moved on
+  if (!res.success) {
+    $('dv-body').innerHTML = `<div class="dv-msg">Could not load diff: ${escHtml(res.error)}</div>`;
+    return;
+  }
+  let model = parseSideBySide(res.diff);
+  let note = '';
+  if (mode === 'full' && model.rows.length > SBS_MAX_FULL_ROWS) {
+    res = await window.gitApp.commitFileDiff(state.repoPath, v.sha, v.file, v.oldFile, 'hunks');
+    if (state.fileDiff !== v) return;
+    if (res.success) { model = parseSideBySide(res.diff); note = ' (large file: changes only)'; }
+  }
+  $('dv-stats').innerHTML = `<span class="add">+${model.adds}</span><span class="del">−${model.dels}</span>${escHtml(note)}`;
+  if (model.binary) {
+    $('dv-body').innerHTML = '<div class="dv-msg">Binary file — no textual diff to show.</div>';
+    return;
+  }
+  if (!model.rows.length) {
+    $('dv-body').innerHTML = '<div class="dv-msg">No textual changes in this file.</div>';
+    return;
+  }
+  $('dv-body').innerHTML = renderSideBySide(model);
+  $('dv-body').scrollTop = 0;
+  // Keep the two panes' horizontal scroll independent but start both at left.
+  stepDiffChange(1); // jump to the first change
 }
 
 // ─── Working Directory (WIP) — staging & commit ───────────────────────────────
@@ -1679,7 +1849,7 @@ async function discardViewedFile() {
   await refreshWorkingState(); // change count dropped → update graph WIP node too
 }
 
-function renderDiff(stat) {
+function renderDiff(stat, fileInfo = []) {
   const lines = stat.trim().split('\n');
   const el = $('detail-diff');
 
@@ -1695,7 +1865,11 @@ function renderDiff(stat) {
       const addDel = line.slice(pipeIdx + 1);
       const adds = (addDel.match(/\+/g) || []).length;
       const dels = (addDel.match(/-/g) || []).length;
-      files.push({ path: filePart, adds, dels });
+      // fileInfo (from --numstat) lists files in the same order as --stat and
+      // has exact paths; --stat truncates long names and rewrites renames.
+      const idx = files.length;
+      const info = fileInfo[idx];
+      files.push({ path: info ? info.path : filePart, adds, dels, idx: info ? idx : null });
     }
   });
 
@@ -1714,7 +1888,7 @@ function renderDiff(stat) {
       const p = parts[i];
       if (!node.children[p]) node.children[p] = makeNode();
       node = node.children[p];
-      if (i === parts.length - 1) node.file = { adds: f.adds, dels: f.dels };
+      if (i === parts.length - 1) node.file = { adds: f.adds, dels: f.dels, idx: f.idx };
     }
   }
 
@@ -1743,8 +1917,9 @@ function renderDiff(stat) {
     if (node.file !== null) {
       // File leaf
       const bars = html`<span class="diff-stat-add">${'+'.repeat(node.file.adds)}</span><span class="diff-stat-del">${'-'.repeat(node.file.dels)}</span>`;
+      const idxAttr = node.file.idx != null ? raw(` data-idx="${node.file.idx}" title="Click to view side-by-side diff"`) : '';
       return html`
-        <div class="diff-stat-line">
+        <div class="diff-stat-line"${idxAttr}>
           <span class="diff-tree-file">${raw(ICON_FILE)}${name}</span>
           <span>${bars}</span>
         </div>`;

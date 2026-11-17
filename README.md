@@ -26,6 +26,7 @@
 - **Right-angle (orthogonal) edge routing** with rounded corners
 - Per-lane row tint; virtualised painting (only visible rows)
 - **Commit detail panel** — author, date, SHA, ref badges, **full commit message**, file diff stats
+- **Side-by-side file diff** — click a file in a commit to see the whole file split old/new with changes highlighted (toggle "Changes only", jump between changes with ↑/↓, `Esc` closes)
 - **Multi-select** commits (Ctrl/Cmd-click, Shift-click range) and **squash** them into one via right-click (consecutive, non-merge commits on the current branch)
 
 **Branches**

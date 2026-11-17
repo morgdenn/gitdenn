@@ -9,7 +9,8 @@ contextBridge.exposeInMainWorld('gitApp', {
   // Git operations
   log: (repoPath) => ipcRenderer.invoke('git:log', { repoPath }),
   commitDiff: (repoPath, sha) => ipcRenderer.invoke('git:commitDiff', { repoPath, sha }),
-  checkout: (repoPath, ref) => ipcRenderer.invoke('git:checkout', { repoPath, ref }),
+  commitFileDiff: (repoPath, sha, file, oldFile, context) => ipcRenderer.invoke('git:commitFileDiff', { repoPath, sha, file, oldFile, context }),
+  checkout:(repoPath, ref) => ipcRenderer.invoke('git:checkout', { repoPath, ref }),
   checkoutRemote: (repoPath, remoteBranch) => ipcRenderer.invoke('git:checkoutRemote', { repoPath, remoteBranch }),
   createBranch: (repoPath, name) => ipcRenderer.invoke('git:createBranch', { repoPath, name }),
   deleteBranch: (repoPath, name) => ipcRenderer.invoke('git:deleteBranch', { repoPath, name }),
