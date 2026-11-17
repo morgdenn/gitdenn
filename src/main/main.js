@@ -450,6 +450,73 @@ ipcMain.handle('git:suggestCommit', async (event, { repoPath, sha }) => {
   }
 });
 
+// ─── Project icon (logo / favicon found inside the repo) ─────────────────────
+// Looks for an obvious logo or icon file in the repo's working tree (root and a
+// few conventional asset folders). Returns a small data URL, or null.
+const ICON_DIRS = ['', 'assets', 'asset', 'images', 'img', 'static', 'public', 'resources', 'build',
+  'docs', '.github', 'media', 'brand', 'branding', 'icons', 'src', 'src/assets', 'src/renderer',
+  'src/renderer/assets', 'app', 'web', 'www'];
+const ICON_EXT_SCORE = { '.png': 10, '.svg': 9, '.webp': 7, '.ico': 6, '.jpg': 4, '.jpeg': 4 };
+
+function scoreIconFile(name, dir) {
+  const ext = path.extname(name).toLowerCase();
+  if (!(ext in ICON_EXT_SCORE)) return 0;
+  const stem = name.slice(0, -ext.length).toLowerCase();
+  if (/sprite|social|banner|og[-_]|screenshot|preview|hero|background|placeholder|arrow|chevron|spinner/.test(stem)) return 0;
+  let s = 0;
+  if (stem === 'logo') s = 100;
+  else if (stem === 'favicon') s = 95;
+  else if (/^(app[-_]?)?icon$/.test(stem)) s = 90;
+  else if (/^(logo|icon|favicon|brand|mark)[-_.]?[\w.-]*$/.test(stem) || /[-_.](logo|icon)$/.test(stem)) s = 70;
+  else if (/logo|favicon/.test(stem)) s = 55;
+  else if (/icon/.test(stem)) s = 40;
+  else return 0;
+  if (dir === '') s += 30;
+  else if (/^(assets|asset|images|img|static|public|resources|build|branding|brand|media)$/.test(dir)) s += 15;
+  return s + ICON_EXT_SCORE[ext];
+}
+
+function findProjectIcon(repoPath) {
+  let best = null;
+  for (const dir of ICON_DIRS) {
+    let entries;
+    try { entries = fs.readdirSync(path.join(repoPath, dir), { withFileTypes: true }); } catch (e) { continue; }
+    for (const ent of entries) {
+      if (!ent.isFile()) continue;
+      const score = scoreIconFile(ent.name, dir);
+      if (score <= 0) continue;
+      const full = path.join(repoPath, dir, ent.name);
+      let size = 0;
+      try { size = fs.statSync(full).size; } catch (e) { continue; }
+      if (!size || size > 2 * 1024 * 1024) continue;
+      if (!best || score > best.score) best = { score, full, rel: path.posix.join(dir.replace(/\\/g, '/'), ent.name), size };
+    }
+  }
+  return best;
+}
+
+ipcMain.handle('repo:projectIcon', async (event, { repoPath }) => {
+  try {
+    const found = findProjectIcon(repoPath);
+    if (!found) return { success: true, icon: null };
+    const ext = path.extname(found.full).toLowerCase();
+    if (ext === '.svg') {
+      if (found.size > 100 * 1024) return { success: true, icon: null };
+      const b64 = fs.readFileSync(found.full).toString('base64');
+      return { success: true, icon: `data:image/svg+xml;base64,${b64}`, file: found.rel };
+    }
+    // Raster: downscale so the stored icon is tiny.
+    const img = nativeImage.createFromPath(found.full);
+    if (img.isEmpty()) return { success: true, icon: null };
+    const { width, height } = img.getSize();
+    const scale = 48 / Math.max(width, height);
+    const small = scale < 1 ? img.resize({ width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)), quality: 'best' }) : img;
+    return { success: true, icon: small.toDataURL(), file: found.rel };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // ─── GitHub organisation icon ────────────────────────────────────────────────
 // If a repo's origin is on GitHub, return its owner's avatar (organisation logo
 // or the person's profile picture) as a small data URL; null for non-GitHub remotes.

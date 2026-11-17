@@ -444,11 +444,16 @@ function renderRecentRepos() {
     return;
   }
   const icons = loadOrgIcons();
+  const projIcons = loadProjectIcons();
   list.innerHTML = state.recentRepos.map((r, i) => {
+    // A logo/favicon found inside the project wins over the GitHub owner avatar.
+    const pi = projIcons[r.path];
     const ic = icons[r.path];
-    const img = ic && ic.icon
-      ? `<img class="org-icon" src="${escHtml(ic.icon)}" alt="" title="${escHtml(ic.org)}">`
-      : '';
+    const img = pi && pi.icon
+      ? `<img class="org-icon" src="${escHtml(pi.icon)}" alt="" title="${escHtml(pi.file || 'Project icon')}">`
+      : (ic && ic.icon
+        ? `<img class="org-icon" src="${escHtml(ic.icon)}" alt="" title="${escHtml(ic.org)}">`
+        : '');
     return `
     <div class="repo-item ${state.repoPath === r.path ? 'active' : ''}"
          data-path="${escHtml(r.path)}"
@@ -463,8 +468,12 @@ function renderRecentRepos() {
   refreshOrgIcons();
 }
 
-// GitHub organisation icons for repos in the list. Cached in localStorage
-// (including "not an org" results) for a week so GitHub is rarely contacted.
+// Icons for repos in the list, in priority order:
+//   1. a logo/favicon file inside the project itself (local, re-checked once per
+//      session since the file can change; last result is cached so the list
+//      shows instantly on startup),
+//   2. the GitHub owner's avatar (organisation logo or profile picture), cached
+//      for a week so GitHub is rarely contacted.
 const ORG_ICON_TTL = 7 * 24 * 3600 * 1000;
 const orgIconTried = new Set(); // paths already attempted this session
 let orgIconBusy = false;
@@ -475,6 +484,12 @@ function loadOrgIcons() {
 function saveOrgIcons(map) {
   try { localStorage.setItem('ownerIcons', JSON.stringify(map)); } catch (e) { /* quota: ignore */ }
 }
+function loadProjectIcons() {
+  try { return JSON.parse(localStorage.getItem('projectIcons') || '{}'); } catch (e) { return {}; }
+}
+function saveProjectIcons(map) {
+  try { localStorage.setItem('projectIcons', JSON.stringify(map)); } catch (e) { /* quota: ignore */ }
+}
 
 async function refreshOrgIcons() {
   if (orgIconBusy) return;
@@ -482,10 +497,24 @@ async function refreshOrgIcons() {
   try {
     let changed = false;
     for (const r of state.recentRepos) {
+      if (orgIconTried.has(r.path)) continue;
+      orgIconTried.add(r.path);
+
+      // 1. Project's own logo/favicon (local files, cheap).
+      const proj = await window.gitApp.projectIcon(r.path);
+      if (proj.success) {
+        const pc = loadProjectIcons();
+        const before = pc[r.path] && pc[r.path].icon;
+        pc[r.path] = { icon: proj.icon, file: proj.file || null, at: Date.now() };
+        saveProjectIcons(pc);
+        if (before !== proj.icon) changed = true;
+        if (proj.icon) continue; // found one — no need to ask GitHub
+      }
+
+      // 2. Fall back to the GitHub owner's avatar.
       const cache = loadOrgIcons();
       const hit = cache[r.path];
-      if ((hit && Date.now() - hit.at < ORG_ICON_TTL) || orgIconTried.has(r.path)) continue;
-      orgIconTried.add(r.path);
+      if (hit && Date.now() - hit.at < ORG_ICON_TTL) continue;
       const res = await window.gitApp.orgIcon(r.path);
       if (!res.success) continue; // offline / rate-limited: retry next session
       cache[r.path] = { org: res.org, icon: res.icon, at: Date.now() };
