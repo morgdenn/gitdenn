@@ -443,16 +443,59 @@ function renderRecentRepos() {
     list.innerHTML = '<div class="empty-sidebar">No repos yet</div>';
     return;
   }
-  list.innerHTML = state.recentRepos.map((r, i) => `
+  const icons = loadOrgIcons();
+  list.innerHTML = state.recentRepos.map((r, i) => {
+    const ic = icons[r.path];
+    const img = ic && ic.icon
+      ? `<img class="org-icon" src="${escHtml(ic.icon)}" alt="" title="${escHtml(ic.org)}">`
+      : '';
+    return `
     <div class="repo-item ${state.repoPath === r.path ? 'active' : ''}"
          data-path="${escHtml(r.path)}"
          data-index="${i}">
-      ${escHtml(r.name)}
+      ${img}<span class="repo-name">${escHtml(r.name)}</span>
     </div>
-  `).join('');
+  `;
+  }).join('');
   list.querySelectorAll('.repo-item').forEach(el => {
     el.addEventListener('click', () => loadRepo(el.dataset.path));
   });
+  refreshOrgIcons();
+}
+
+// GitHub organisation icons for repos in the list. Cached in localStorage
+// (including "not an org" results) for a week so GitHub is rarely contacted.
+const ORG_ICON_TTL = 7 * 24 * 3600 * 1000;
+const orgIconTried = new Set(); // paths already attempted this session
+let orgIconBusy = false;
+
+function loadOrgIcons() {
+  try { return JSON.parse(localStorage.getItem('orgIcons') || '{}'); } catch (e) { return {}; }
+}
+function saveOrgIcons(map) {
+  try { localStorage.setItem('orgIcons', JSON.stringify(map)); } catch (e) { /* quota: ignore */ }
+}
+
+async function refreshOrgIcons() {
+  if (orgIconBusy) return;
+  orgIconBusy = true;
+  try {
+    let changed = false;
+    for (const r of state.recentRepos) {
+      const cache = loadOrgIcons();
+      const hit = cache[r.path];
+      if ((hit && Date.now() - hit.at < ORG_ICON_TTL) || orgIconTried.has(r.path)) continue;
+      orgIconTried.add(r.path);
+      const res = await window.gitApp.orgIcon(r.path);
+      if (!res.success) continue; // offline / rate-limited: retry next session
+      cache[r.path] = { org: res.org, icon: res.icon, at: Date.now() };
+      saveOrgIcons(cache);
+      if (res.icon) changed = true;
+    }
+    if (changed) renderRecentRepos();
+  } finally {
+    orgIconBusy = false;
+  }
 }
 
 function addRecentRepo(repoPath) {

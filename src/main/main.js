@@ -450,6 +450,40 @@ ipcMain.handle('git:suggestCommit', async (event, { repoPath, sha }) => {
   }
 });
 
+// ─── GitHub organisation icon ────────────────────────────────────────────────
+// If a repo's origin is on GitHub and the owner is an *organisation*, return its
+// avatar as a small data URL (null for personal accounts / non-GitHub remotes).
+// Only the public owner name is sent to GitHub (unauthenticated, generic UA).
+ipcMain.handle('github:orgIcon', async (event, { repoPath }) => {
+  try {
+    const git = simpleGit(repoPath);
+    let url = '';
+    try { url = (await git.raw(['remote', 'get-url', 'origin'])).trim(); }
+    catch (e) {
+      const remotes = await git.getRemotes(true);
+      url = remotes[0] && remotes[0].refs ? remotes[0].refs.fetch : '';
+    }
+    const m = /github\.com[:/]([^/\s]+)\/[^/\s]+?(?:\.git)?\/?$/i.exec(url);
+    if (!m) return { success: true, org: null, icon: null };
+    const owner = m[1];
+
+    const headers = { 'User-Agent': 'GitDenn', Accept: 'application/vnd.github+json' };
+    const res = await fetch(`https://api.github.com/users/${encodeURIComponent(owner)}`, { headers });
+    if (!res.ok) return { success: false, error: `GitHub lookup failed (${res.status})` };
+    const info = await res.json();
+    if (info.type !== 'Organization') return { success: true, org: null, icon: null };
+
+    const sep = info.avatar_url.includes('?') ? '&' : '?';
+    const img = await fetch(`${info.avatar_url}${sep}s=48`, { headers: { 'User-Agent': 'GitDenn' } });
+    if (!img.ok) return { success: false, error: `Avatar download failed (${img.status})` };
+    const type = (img.headers.get('content-type') || 'image/png').split(';')[0];
+    const buf = Buffer.from(await img.arrayBuffer());
+    return { success: true, org: owner, icon: `data:${type};base64,${buf.toString('base64')}` };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Pull the current branch from its upstream
 ipcMain.handle('git:pull', async (event, { repoPath }) => {
   try {

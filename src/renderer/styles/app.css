@@ -258,6 +258,12 @@ body.row-resizing { cursor: row-resize; user-select: none; }
   color: var(--text-muted);
 }
 
+.repo-item { display: flex; align-items: center; gap: 7px; }
+.repo-item .repo-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.repo-item .org-icon {
+  width: 14px; height: 14px; flex-shrink: 0;
+  border-radius: 3px; object-fit: cover;
+}
 .repo-item {
   padding: 7px 14px;
   cursor: pointer;
