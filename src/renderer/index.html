@@ -83,7 +83,6 @@
         <section class="side-panel" id="branches-panel">
           <div class="side-panel-header">
             <span class="panel-title">Branches</span>
-            <button class="stale-toggle" id="btn-stale" style="display:none;"></button>
             <button class="panel-collapse-btn" title="Collapse">‹</button>
           </div>
           <div class="side-panel-body">
@@ -95,7 +94,10 @@
               </div>
               <div class="branch-split-resizer" id="branch-split" title="Drag to resize"></div>
               <div class="branch-group" id="remote-group">
-                <div class="sidebar-section-header">Remote</div>
+                <div class="sidebar-section-header has-action">
+                  <span>Remote</span>
+                  <button class="stale-toggle" id="btn-stale" style="display:none;"></button>
+                </div>
                 <div id="remote-branches-list" class="branch-list-scroll"></div>
               </div>
             </div>
