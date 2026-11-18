@@ -200,6 +200,13 @@ function bindEvents() {
     showCommitCtxMenu(e.clientX, e.clientY);
   });
 
+  // Show/hide stale branches (preference is remembered)
+  $('btn-stale').addEventListener('click', () => {
+    const hide = localStorage.getItem('hideStale') === '1';
+    try { localStorage.setItem('hideStale', hide ? '0' : '1'); } catch (e) { /* ignore */ }
+    renderBranches();
+  });
+
   // Click a file in a commit's file list → side-by-side diff over the graph
   on('detail-diff', 'click', '.diff-stat-line[data-idx]', el => openCommitFileDiff(+el.dataset.idx));
   $('dv-close').addEventListener('click', closeFileDiff);
@@ -681,6 +688,8 @@ async function loadRepo(repoPath) {
 
   state.branches = result.branches;
   state.branchShas = result.branchShas || {};
+  state.branchDates = result.branchDates || {};
+  state.defaultBranch = result.defaultBranch || null;
   state.currentBranch = result.currentBranch;
   state.remoteUrl = result.remoteUrl || null;
   state.status = result.status || {};
@@ -830,17 +839,56 @@ function showToast(message) {
 }
 
 // ─── Branches Sidebar ─────────────────────────────────────────────────────────
+// ─── Stale branches ───────────────────────────────────────────────────────────
+// GitHub calls a branch "stale" when its last commit is more than three months
+// old (the default branch is never stale). GitHub has no API for this list, so
+// we apply the same rule to each branch tip's commit date — same result as
+// github.com/<owner>/<repo>/branches/stale, with no network or sign-in needed.
+function staleCutoff() {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 3);
+  return Math.floor(d.getTime() / 1000);
+}
+
+function isStaleBranch(value, cutoff) {
+  const date = (state.branchDates || {})[value];
+  if (!date || date >= cutoff) return false;
+  if (value === state.currentBranch) return false;
+  const short = value.replace(/^remotes\/[^/]+\//, '');
+  if (short === 'HEAD') return false;
+  if (state.defaultBranch && short === state.defaultBranch) return false;
+  return true;
+}
+
 function renderBranches() {
-  const locals  = state.branches.filter(b => !b.startsWith('remotes/'));
-  const remotes = state.branches.filter(b => b.startsWith('remotes/'));
+  const cutoff = staleCutoff();
+  const hideStale = localStorage.getItem('hideStale') === '1';
+  const all = state.branches;
+  const staleSet = new Set(all.filter(b => isStaleBranch(b, cutoff)));
+
+  // Toggle button in the panel header (hidden when nothing is stale).
+  const btn = $('btn-stale');
+  if (btn) {
+    btn.style.display = staleSet.size ? '' : 'none';
+    btn.textContent = `${hideStale ? 'Show' : 'Hide'} stale (${staleSet.size})`;
+    btn.classList.toggle('active', hideStale);
+    btn.title = 'Stale = no commits for 3+ months (same rule GitHub uses). Click to ' +
+      (hideStale ? 'show them (dimmed)' : 'hide them');
+  }
+
+  const visible = hideStale ? all.filter(b => !staleSet.has(b)) : all;
+  const locals  = visible.filter(b => !b.startsWith('remotes/'));
+  const remotes = visible.filter(b => b.startsWith('remotes/'));
 
   // Each tree item: `path` is split on "/" to form the hierarchy; `value` is
   // the full identifier kept on the leaf for checkout (data-branch).
+  const staleInfo = b => staleSet.has(b)
+    ? { stale: true, lastCommit: state.branchDates[b] } : { stale: false };
   const localItems  = locals.map(b => ({
-    path: b, value: b, current: b === state.currentBranch,
+    path: b, value: b, current: b === state.currentBranch, ...staleInfo(b),
   }));
   const remoteItems = remotes.map(b => ({
-    path: b.replace('remotes/', ''), value: b, current: false,
+    path: b.replace('remotes/', ''), value: b, current: false, ...staleInfo(b),
   }));
 
   render('local-branches-list', locals.length
@@ -903,8 +951,12 @@ function renderBranchTree(node, opts, depth = 0) {
   return entries.map(child => {
     if (child.leaf) {
       const it = child.leaf;
-      const cls = `branch-item${opts.remote ? ' branch-remote' : ''}${it.current ? ' current' : ''}`;
-      const title = opts.remote ? raw(' title="Double-click to check out locally"') : '';
+      const cls = `branch-item${opts.remote ? ' branch-remote' : ''}${it.current ? ' current' : ''}${it.stale ? ' stale' : ''}`;
+      const tip = [
+        it.stale ? `Stale — last commit ${new Date(it.lastCommit * 1000).toLocaleDateString()} (${relativeDate(it.lastCommit)})` : '',
+        opts.remote ? 'Double-click to check out locally' : '',
+      ].filter(Boolean).join('\n');
+      const title = tip ? raw(` title="${escHtml(tip)}"`) : '';
       const track = opts.remote ? null : (state.tracking || {})[it.value];
       const ab = track && (track.ahead || track.behind) ? html`
         <span class="branch-ab">

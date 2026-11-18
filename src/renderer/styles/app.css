@@ -258,6 +258,18 @@ body.row-resizing { cursor: row-resize; user-select: none; }
   color: var(--text-muted);
 }
 
+/* Stale branches (no commits for 3+ months): dimmed, name in italics */
+.branch-item.stale { opacity: 0.5; }
+.branch-item.stale .branch-name { font-style: italic; }
+.branch-item.stale:hover { opacity: 0.85; }
+.stale-toggle {
+  margin-left: auto; margin-right: 6px;
+  background: transparent; border: 1px solid var(--border-lt); border-radius: 10px;
+  color: var(--text-muted); font-family: var(--font); font-size: 10px;
+  padding: 1px 8px; cursor: pointer; white-space: nowrap;
+}
+.stale-toggle:hover { color: var(--text-pri); border-color: var(--text-muted); }
+.stale-toggle.active { color: var(--amber, #e6db74); border-color: var(--amber, #e6db74); }
 .repo-item { display: flex; align-items: center; gap: 7px; }
 .repo-item .repo-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .repo-item .org-icon {

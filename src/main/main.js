@@ -119,13 +119,15 @@ ipcMain.handle('git:log', async (event, { repoPath }) => {
     let head = null;
     try { head = (await git.revparse(['HEAD'])).trim(); } catch (e) { head = null; }
 
-    const { tracking, branchShas } = await readRefInfo(git);
+    const { tracking, branchShas, branchDates, defaultBranch } = await readRefInfo(git);
 
     return {
       success: true,
       commits,
       branches: branches.all,
       branchShas,
+      branchDates,
+      defaultBranch,
       currentBranch: branches.current,
       remoteUrl,
       head,
@@ -778,8 +780,8 @@ ipcMain.handle('git:refs', async (event, { repoPath, fetch }) => {
       try { await git.env({ ...process.env, GIT_TERMINAL_PROMPT: '0' }).fetch(['--all', '--prune']); }
       catch (e) { /* offline / auth failure: still report local refs */ }
     }
-    const { tracking, branchShas } = await readRefInfo(git);
-    return { success: true, tracking, branchShas };
+    const { tracking, branchShas, branchDates, defaultBranch } = await readRefInfo(git);
+    return { success: true, tracking, branchShas, branchDates, defaultBranch };
   } catch (err) {
     return { success: false, error: err.message };
   }
@@ -794,6 +796,7 @@ ipcMain.handle('git:refs', async (event, { repoPath, fetch }) => {
 async function readRefInfo(git) {
   const tracking = {};
   const branchShas = {};
+  const branchDates = {};
   try {
     const raw = await git.raw([
       'for-each-ref', '--format=%(refname:short)%09%(upstream:track)', 'refs/heads',
@@ -811,25 +814,37 @@ async function readRefInfo(git) {
 
   try {
     const refOut = await git.raw([
-      'for-each-ref', '--format=%(refname)\t%(objectname)', 'refs/heads', 'refs/remotes',
+      'for-each-ref', '--format=%(refname)\t%(objectname)\t%(committerdate:unix)', 'refs/heads', 'refs/remotes',
     ]);
     refOut.split('\n').forEach(line => {
-      const tab = line.indexOf('\t');
-      if (tab < 0) return;
-      const refname = line.slice(0, tab).trim();
-      const sha = line.slice(tab + 1).trim();
-      if (!sha) return;
+      const [refname0, sha0, date0] = line.split('\t');
+      const refname = (refname0 || '').trim();
+      const sha = (sha0 || '').trim();
+      if (!refname || !sha) return;
       let key;
       if (refname.startsWith('refs/heads/')) {
         key = refname.slice('refs/heads/'.length);
       } else if (refname.startsWith('refs/remotes/')) {
         key = 'remotes/' + refname.slice('refs/remotes/'.length);
       }
-      if (key) branchShas[key] = sha;
+      if (key) {
+        branchShas[key] = sha;
+        const d = parseInt(date0, 10);
+        if (d) branchDates[key] = d; // last commit date of the branch tip (unix seconds)
+      }
     });
   } catch (e) { /* ignore */ }
 
-  return { tracking, branchShas };
+  // The repo's default branch (what origin/HEAD points at) is never "stale".
+  let defaultBranch = null;
+  try {
+    const sym = (await git.raw(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])).trim(); // origin/master
+    defaultBranch = sym.replace(/^[^/]+\//, '');
+  } catch (e) {
+    defaultBranch = ['main', 'master'].find(n => branchShas[n] || branchShas['remotes/origin/' + n]) || null;
+  }
+
+  return { tracking, branchShas, branchDates, defaultBranch };
 }
 
 function parseRawLog(raw) {
