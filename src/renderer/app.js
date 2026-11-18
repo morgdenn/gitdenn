@@ -210,6 +210,7 @@ function bindEvents() {
   // Click a file in a commit's file list → side-by-side diff over the graph
   on('detail-diff', 'click', '.diff-stat-line[data-idx]', el => openCommitFileDiff(+el.dataset.idx));
   $('dv-close').addEventListener('click', closeFileDiff);
+  initMinimap();
   $('dv-prev').addEventListener('click', () => stepDiffChange(-1));
   $('dv-next').addEventListener('click', () => stepDiffChange(1));
   $('dv-mode').addEventListener('click', () => {
@@ -1662,6 +1663,7 @@ function closeFileDiff() {
   restoreSidebarAfterDiff();
   const v = $('diff-view');
   if (v) v.style.display = 'none';
+  state.dvModel = null;
   document.querySelectorAll('.diff-stat-line.active, .wd-file.active').forEach(el => el.classList.remove('active'));
 }
 
@@ -1753,6 +1755,82 @@ function renderSideBySide(model) {
          `<div class="sbs-pane"><div class="sbs-lines">${right.join('')}</div></div>`;
 }
 
+// ── Mini map ──────────────────────────────────────────────────────────────────
+// A narrow canvas showing the whole file at a glance: removed lines (left half,
+// red) and added lines (right half, green), with the visible area outlined.
+// Click or drag on it to scroll.
+function drawMinimap() {
+  const map = $('dv-map'), cv = $('dv-map-canvas');
+  const model = state.dvModel;
+  if (!map || !cv || !model) return;
+  const W = map.clientWidth, H = map.clientHeight;
+  if (!W || !H) return;
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(W * dpr);
+  cv.height = Math.round(H * dpr);
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const rows = model.rows, n = rows.length;
+  const rowH = H / n;
+  const h = Math.max(1.5, rowH); // keep single changed lines visible
+  const half = Math.floor((W - 6) / 2);
+  for (let i = 0; i < n; i++) {
+    const r = rows[i];
+    const y = i * rowH;
+    if (r.t === 'ctx') {
+      ctx.fillStyle = 'rgba(255,255,255,0.07)';
+      ctx.fillRect(3, y, W - 6, Math.max(1, rowH - 0.2));
+    } else if (r.t === 'hunk') {
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.fillRect(3, y, W - 6, Math.max(1, Math.min(h, 2)));
+    } else {
+      if (r.l) { ctx.fillStyle = '#f92672'; ctx.fillRect(3, y, half, h); }
+      if (r.r) { ctx.fillStyle = '#a6e22e'; ctx.fillRect(3 + half, y, half, h); }
+    }
+  }
+  updateMinimapView();
+}
+
+function updateMinimapView() {
+  const map = $('dv-map'), box = $('dv-map-view');
+  const pane = document.querySelector('#dv-body .sbs-pane');
+  if (!map || !box || !pane || !pane.scrollHeight) return;
+  const H = map.clientHeight;
+  const ratio = pane.clientHeight / pane.scrollHeight;
+  const hPx = Math.max(8, Math.min(H, ratio * H));
+  box.style.height = hPx + 'px';
+  box.style.top = Math.min(H - hPx, (pane.scrollTop / pane.scrollHeight) * H) + 'px';
+  box.style.display = ratio >= 1 ? 'none' : ''; // whole file fits: nothing to scroll
+}
+
+function minimapScrollTo(clientY) {
+  const map = $('dv-map');
+  const pane = document.querySelector('#dv-body .sbs-pane');
+  if (!map || !pane) return;
+  const y = clientY - map.getBoundingClientRect().top;
+  const target = (y / map.clientHeight) * pane.scrollHeight - pane.clientHeight / 2;
+  pane.scrollTop = Math.max(0, target);
+}
+
+function initMinimap() {
+  const map = $('dv-map');
+  map.addEventListener('mousedown', e => {
+    e.preventDefault();
+    minimapScrollTo(e.clientY);
+    const move = ev => minimapScrollTo(ev.clientY);
+    const up = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  });
+  // Redraw when the diff area resizes (sidebar collapse/expand, window resize).
+  if (window.ResizeObserver) new ResizeObserver(() => { if (state.dvModel) drawMinimap(); }).observe(map);
+}
+
 function stepDiffChange(dir) {
   const list = state.dvChanges || [];
   if (!list.length) return;
@@ -1774,6 +1852,8 @@ async function showFileDiff() {
   $('dv-mode').textContent = state.diffMode === 'full' ? 'Changes only' : 'Full file';
   $('dv-discard').style.display = v.wip ? '' : 'none';
   $('dv-body').innerHTML = '<div class="dv-msg">Loading diff…</div>';
+  $('dv-map').style.display = 'none';
+  state.dvModel = null;
   document.querySelectorAll('.diff-stat-line').forEach(el => {
     el.classList.toggle('active', !v.wip && el.dataset.idx === String(v.idx));
   });
@@ -1811,12 +1891,17 @@ async function showFileDiff() {
     return;
   }
   $('dv-body').innerHTML = renderSideBySide(model);
-  // Keep the vertical scroll of the two panes in lockstep.
+  // Keep the vertical scroll of the two panes in lockstep (and the mini map's
+  // viewport box in step with them).
   const panes = $('dv-body').querySelectorAll('.sbs-pane');
   panes.forEach((pane, i) => pane.addEventListener('scroll', () => {
     const other = panes[1 - i];
     if (other.scrollTop !== pane.scrollTop) other.scrollTop = pane.scrollTop;
+    if (i === 0) updateMinimapView();
   }));
+  state.dvModel = model;
+  $('dv-map').style.display = '';
+  drawMinimap();
   stepDiffChange(1); // jump to the first change
 }
 
