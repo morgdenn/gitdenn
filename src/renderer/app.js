@@ -910,6 +910,14 @@ function updatePushHighlight() {
   btn.title = pending
     ? `Push current branch (${t.ahead} unpushed commit${t.ahead === 1 ? '' : 's'})`
     : 'Push current branch';
+
+  const pull = $('btn-pull');
+  if (!pull) return;
+  const behind = (t && t.behind) || 0;
+  pull.classList.toggle('has-unpushed', behind > 0);
+  pull.title = behind
+    ? `Pull current branch (${behind} commit${behind === 1 ? '' : 's'} to pull)`
+    : 'Pull current branch';
 }
 
 function renderBranches() {
