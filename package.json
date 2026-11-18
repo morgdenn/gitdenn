@@ -26,6 +26,7 @@
   "build": {
     "appId": "com.morgdenn.gitdenn",
     "productName": "GitDenn",
+    "icon": "public/icon.png",
     "files": [
       "src/**/*",
       "public/**/*",
