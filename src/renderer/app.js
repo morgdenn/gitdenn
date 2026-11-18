@@ -844,6 +844,13 @@ function showToast(message) {
 // old (the default branch is never stale). GitHub has no API for this list, so
 // we apply the same rule to each branch tip's commit date — same result as
 // github.com/<owner>/<repo>/branches/stale, with no network or sign-in needed.
+// Small clock icon for the stale-branches toggle (a slash is drawn when they are hidden).
+const ICON_CLOCK = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true">
+  <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.4"/>
+  <path d="M8 4.6V8l2.3 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path class="stale-slash" d="M2.5 13.5l11-11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+</svg>`;
+
 function staleCutoff() {
   const d = new Date();
   d.setMonth(d.getMonth() - 3);
@@ -870,7 +877,7 @@ function renderBranches() {
   const btn = $('btn-stale');
   if (btn) {
     btn.style.display = staleSet.size ? '' : 'none';
-    btn.textContent = `${hideStale ? 'Show' : 'Hide'} stale (${staleSet.size})`;
+    btn.innerHTML = ICON_CLOCK; // icon only; the count is in the tooltip
     btn.classList.toggle('active', hideStale);
     btn.title = 'Stale = no commits for 3+ months (same rule GitHub uses). Click to ' +
       (hideStale ? 'show them (dimmed)' : 'hide them');
