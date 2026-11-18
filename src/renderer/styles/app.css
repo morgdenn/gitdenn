@@ -215,6 +215,15 @@ body.row-resizing { cursor: row-resize; user-select: none; }
   letter-spacing: 0.3px;
 }
 
+/* Both side panels collapsed (e.g. while a diff is open): show only the logo
+   mark, centred, so the whole sidebar shrinks to just the two thin strips. */
+#sidebar:has(#repos-panel.collapsed):has(#branches-panel.collapsed) #sidebar-header {
+  padding: 0;
+  justify-content: center;
+}
+#sidebar:has(#repos-panel.collapsed):has(#branches-panel.collapsed) .logo { gap: 0; }
+#sidebar:has(#repos-panel.collapsed):has(#branches-panel.collapsed) .logo span { display: none; }
+
 #sidebar-actions {
   padding: 10px 8px;
   display: flex;
