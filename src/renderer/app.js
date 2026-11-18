@@ -948,16 +948,41 @@ const ICON_CHECK = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height
   <path d="M4.6 8.2l2.1 2.2 4.7-4.9" fill="none" style="stroke:var(--bg-deep)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
+// If a folder's subtree is a straight chain ending in exactly one branch
+// (e.g. fix/ → PROJ-304/ → safe-xml), return that branch and its full slash-joined
+// name so it can be shown as a single row instead of nested folders.
+function singleBranchChain(node) {
+  const labels = [node.label];
+  let n = node;
+  while (!n.leaf) {
+    const keys = Object.keys(n.children);
+    if (keys.length !== 1) return null;
+    n = n.children[keys[0]];
+    labels.push(n.label);
+  }
+  return Object.keys(n.children).length ? null : { leaf: n.leaf, label: labels.join('/') };
+}
+
 function renderBranchTree(node, opts, depth = 0) {
-  const entries = Object.values(node.children).sort((a, b) => {
-    const aLeaf = !!a.leaf, bLeaf = !!b.leaf;
+  // In the remote view, folders that only lead to one branch are flattened to a
+  // single row with the full name. The top level (the remote itself, e.g.
+  // "origin") always stays a folder.
+  const entries = Object.values(node.children).map(child => {
+    let leafItem = child.leaf, label = child.label;
+    if (!leafItem && opts.remote && depth >= 1) {
+      const one = singleBranchChain(child);
+      if (one) { leafItem = one.leaf; label = one.label; }
+    }
+    return { child, leafItem, label };
+  }).sort((a, b) => {
+    const aLeaf = !!a.leafItem, bLeaf = !!b.leafItem;
     if (aLeaf !== bLeaf) return aLeaf ? 1 : -1;
     return a.label.localeCompare(b.label);
   });
 
-  return entries.map(child => {
-    if (child.leaf) {
-      const it = child.leaf;
+  return entries.map(({ child, leafItem, label }) => {
+    if (leafItem) {
+      const it = leafItem;
       const cls = `branch-item${opts.remote ? ' branch-remote' : ''}${it.current ? ' current' : ''}${it.stale ? ' stale' : ''}`;
       const tip = [
         it.stale ? `Stale — last commit ${new Date(it.lastCommit * 1000).toLocaleDateString()} (${relativeDate(it.lastCommit)})` : '',
@@ -973,7 +998,7 @@ function renderBranchTree(node, opts, depth = 0) {
       return html`
         <div class="${cls}" data-branch="${it.value}"${title}>
           ${raw(it.current ? ICON_CHECK : ICON_BRANCH)}
-          <span class="branch-name">${child.label}</span>
+          <span class="branch-name">${label}</span>
           ${ab}
         </div>`;
     }
