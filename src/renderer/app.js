@@ -879,13 +879,15 @@ function renderBranches() {
     btn.style.display = staleSet.size ? '' : 'none';
     btn.innerHTML = ICON_CLOCK; // icon only; the count is in the tooltip
     btn.classList.toggle('active', hideStale);
-    btn.title = 'Stale = no commits for 3+ months (same rule GitHub uses). Click to ' +
-      (hideStale ? 'show them (dimmed)' : 'hide them');
+    btn.title = `${staleSet.size} stale branch${staleSet.size === 1 ? '' : 'es'} (no commits for 3+ months, GitHub's rule).\n` +
+      (hideStale ? 'Hidden — click to show them (dimmed)' : 'Shown dimmed — click to hide them');
   }
 
-  const visible = hideStale ? all.filter(b => !staleSet.has(b)) : all;
-  const locals  = visible.filter(b => !b.startsWith('remotes/'));
-  const remotes = visible.filter(b => b.startsWith('remotes/'));
+  // The tree is always built from ALL branches so hidden stale ones still count
+  // when deciding whether a folder is flattened; they are skipped at render time
+  // (opts.hideStale), leaving a folder with just its visible children.
+  const locals  = all.filter(b => !b.startsWith('remotes/'));
+  const remotes = all.filter(b => b.startsWith('remotes/'));
 
   // Each tree item: `path` is split on "/" to form the hierarchy; `value` is
   // the full identifier kept on the leaf for checkout (data-branch).
@@ -899,11 +901,11 @@ function renderBranches() {
   }));
 
   render('local-branches-list', locals.length
-    ? renderBranchTree(buildBranchTree(localItems), { remote: false })
+    ? renderBranchTree(buildBranchTree(localItems), { remote: false, hideStale })
     : html`<div class="empty-sidebar">No local branches</div>`);
 
   render('remote-branches-list', remotes.length
-    ? renderBranchTree(buildBranchTree(remoteItems), { remote: true })
+    ? renderBranchTree(buildBranchTree(remoteItems), { remote: true, hideStale })
     : html`<div class="empty-sidebar">No remote branches</div>`);
 }
 
@@ -963,6 +965,12 @@ function singleBranchChain(node) {
   return Object.keys(n.children).length ? null : { leaf: n.leaf, label: labels.join('/') };
 }
 
+// True if the subtree contains at least one branch that isn't hidden as stale.
+function hasVisibleBranch(node, hideStale) {
+  if (node.leaf && !(hideStale && node.leaf.stale)) return true;
+  return Object.values(node.children || {}).some(c => hasVisibleBranch(c, hideStale));
+}
+
 function renderBranchTree(node, opts, depth = 0) {
   // In the remote view, folders that only lead to one branch are flattened to a
   // single row with the full name. The top level (the remote itself, e.g.
@@ -974,7 +982,8 @@ function renderBranchTree(node, opts, depth = 0) {
       if (one) { leafItem = one.leaf; label = one.label; }
     }
     return { child, leafItem, label };
-  }).sort((a, b) => {
+  }).filter(e => !opts.hideStale || (e.leafItem ? !e.leafItem.stale : hasVisibleBranch(e.child, true)))
+  .sort((a, b) => {
     const aLeaf = !!a.leafItem, bLeaf = !!b.leafItem;
     if (aLeaf !== bLeaf) return aLeaf ? 1 : -1;
     return a.label.localeCompare(b.label);
