@@ -270,21 +270,34 @@ function bindEvents() {
 
   // Remember the size the user dragged the message box to, so it isn't reset
   // whenever the file list re-renders (stage/unstage, refresh, switching view).
-  // (mousedown on the box, mouseup anywhere — a drag may end outside the box)
-  let msgBoxDrag = null;
+  // Drag the full-width bar along the bottom edge of a message box to resize it.
+  // The height is remembered so re-renders (stage/unstage, refresh) don't reset it.
   document.addEventListener('mousedown', e => {
-    const t = e.target;
-    msgBoxDrag = t && (t.id === 'commit-msg-input' || t.id === 'reword-input') ? t : null;
-  });
-  document.addEventListener('mouseup', () => {
-    const t = msgBoxDrag;
-    msgBoxDrag = null;
-    if (!t || !t.isConnected) return;
-    const h = Math.round(t.getBoundingClientRect().height);
-    if (h > 20) {
-      state.msgBoxH = h;
-      try { localStorage.setItem('msgBoxH', String(h)); } catch (err) { /* ignore */ }
-    }
+    const bar = e.target.closest && e.target.closest('.msg-resizer');
+    if (!bar) return;
+    const ta = bar.parentElement.querySelector('textarea');
+    if (!ta) return;
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = ta.getBoundingClientRect().height;
+    document.body.classList.add('row-resizing');
+    const move = ev => {
+      const maxH = Math.round(window.innerHeight * 0.7);
+      const h = Math.max(80, Math.min(maxH, startH + (ev.clientY - startY)));
+      ta.style.height = h + 'px';
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+      document.body.classList.remove('row-resizing');
+      const h = Math.round(ta.getBoundingClientRect().height);
+      if (h > 20) {
+        state.msgBoxH = h;
+        try { localStorage.setItem('msgBoxH', String(h)); } catch (err) { /* ignore */ }
+      }
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
   });
 
   // Reword (edit message) actions in the commit detail panel
@@ -1997,7 +2010,7 @@ async function renderWipDetail() {
           <span>Commit message</span>
           <button class="wd-bulk" data-act="suggest" ${(staged.length || unstaged.length) ? '' : raw('disabled')} title="${staged.length ? 'Generate a message from the staged changes' : 'Nothing staged — generate a message from the working changes'}">✨ Generate</button>
         </div>
-        <textarea id="commit-msg-input" placeholder="Commit message" rows="3"${msgBoxStyle()}>${state.commitMsg || ''}</textarea>
+        <div class="msg-box"><textarea id="commit-msg-input" placeholder="Commit message" rows="6"${msgBoxStyle()}>${state.commitMsg || ''}</textarea><div class="msg-resizer" title="Drag to resize"></div></div>
         <div class="commit-split-btn${staged.length ? '' : ' disabled'}">
           <button class="primary-btn commit-main-btn" data-act="commit" ${staged.length ? '' : raw('disabled')}>
             Commit ${staged.length} file${staged.length === 1 ? '' : 's'}
@@ -2110,7 +2123,7 @@ async function openRewordEditor() {
         <span>Edit message</span>
         <button class="wd-bulk" data-act="reword-suggest" title="Generate a message from this commit's changes">✨ Generate</button>
       </div>
-      <textarea id="reword-input" rows="4"${msgBoxStyle()}>${current}</textarea>
+      <div class="msg-box"><textarea id="reword-input" rows="8"${msgBoxStyle()}>${current}</textarea><div class="msg-resizer" title="Drag to resize"></div></div>
       <div class="reword-btns">
         <button class="secondary-btn" data-act="reword-cancel">Cancel</button>
         <button class="primary-btn" data-act="reword-save">Save</button>
