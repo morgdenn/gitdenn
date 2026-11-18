@@ -1632,8 +1632,34 @@ function openCommitFileDiff(idx) {
   showFileDiff();
 }
 
+// While a diff is open the left-hand Repos/Branches panels are collapsed to give
+// the diff room; their previous collapsed/expanded state is restored on exit.
+const DIFF_COLLAPSE_PANELS = ['repos-panel', 'branches-panel'];
+
+function collapseSidebarForDiff() {
+  if (state.sidebarBeforeDiff) return; // already collapsed by an open diff (switching files)
+  state.sidebarBeforeDiff = {};
+  for (const id of DIFF_COLLAPSE_PANELS) {
+    const el = $(id);
+    if (!el) continue;
+    state.sidebarBeforeDiff[id] = el.classList.contains('collapsed');
+    el.classList.add('collapsed');
+  }
+}
+
+function restoreSidebarAfterDiff() {
+  const prev = state.sidebarBeforeDiff;
+  if (!prev) return;
+  state.sidebarBeforeDiff = null;
+  for (const id of DIFF_COLLAPSE_PANELS) {
+    const el = $(id);
+    if (el) el.classList.toggle('collapsed', !!prev[id]);
+  }
+}
+
 function closeFileDiff() {
   state.fileDiff = null;
+  restoreSidebarAfterDiff();
   const v = $('diff-view');
   if (v) v.style.display = 'none';
   document.querySelectorAll('.diff-stat-line.active, .wd-file.active').forEach(el => el.classList.remove('active'));
@@ -1741,6 +1767,7 @@ async function showFileDiff() {
   const v = state.fileDiff;
   if (!v) return;
   const view = $('diff-view');
+  collapseSidebarForDiff();
   view.style.display = 'flex';
   $('dv-title').textContent = v.oldFile && v.oldFile !== v.file ? `${v.oldFile}  →  ${v.file}` : v.file;
   $('dv-stats').innerHTML = '';
