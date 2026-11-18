@@ -1818,11 +1818,16 @@ async function renderWipDetail() {
   const unstaged = files.filter(f => f.unstaged);
   $('detail-author').textContent = `${staged.length} staged · ${unstaged.length} unstaged`;
 
+  // Keep the file whose diff is open highlighted across re-renders of the list.
+  const isViewed = (f, kind) => {
+    const v = state.fileDiff;
+    return !!(v && v.wip && v.file === f.path && v.staged === (kind === 'staged'));
+  };
   const fileRow = (f, kind) => {
     const label = statusLabel(kind === 'staged' ? f.index : f.working_dir, f.untracked && kind !== 'staged');
     const act = kind === 'staged' ? 'unstage' : 'stage';
     return html`
-      <div class="wd-file" data-path="${f.path}" data-staged="${kind === 'staged'}" data-untracked="${!!f.untracked}">
+      <div class="wd-file${isViewed(f, kind) ? ' active' : ''}" data-path="${f.path}" data-staged="${kind === 'staged'}" data-untracked="${!!f.untracked}">
         <span class="wd-status wd-${label.cls}">${label.ch}</span>
         <span class="wd-path" title="${f.path}">${f.path}</span>
         <button class="wd-act" data-act="${act}" data-path="${f.path}" title="${act}">
