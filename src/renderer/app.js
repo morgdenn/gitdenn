@@ -900,7 +900,20 @@ function isStaleBranch(value, cutoff) {
   return true;
 }
 
+// Give the Push button its hover look while the current branch has unpushed commits.
+function updatePushHighlight() {
+  const btn = $('btn-push');
+  if (!btn) return;
+  const t = (state.tracking || {})[state.currentBranch];
+  const pending = !!(t && t.ahead > 0);
+  btn.classList.toggle('has-unpushed', pending);
+  btn.title = pending
+    ? `Push current branch (${t.ahead} unpushed commit${t.ahead === 1 ? '' : 's'})`
+    : 'Push current branch';
+}
+
 function renderBranches() {
+  updatePushHighlight();
   const cutoff = staleCutoff();
   const hideStale = localStorage.getItem('hideStale') === '1';
   const all = state.branches;

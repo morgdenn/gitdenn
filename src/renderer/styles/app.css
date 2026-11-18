@@ -570,7 +570,8 @@ body.row-resizing { cursor: row-resize; user-select: none; }
   font-family: var(--font);
   transition: all 0.15s;
 }
-.toolbar-btn:hover { background: var(--bg-hover); color: var(--text-pri); border-color: var(--accent); }
+.toolbar-btn:hover,
+.toolbar-btn.has-unpushed { background: var(--bg-hover); color: var(--text-pri); border-color: var(--accent); }
 
 #status-chips { display: flex; gap: 6px; margin-left: auto; -webkit-app-region: no-drag; }
 #toolbar-right { display: flex; gap: 6px; margin-left: 10px; -webkit-app-region: no-drag; }
