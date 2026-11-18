@@ -1867,12 +1867,25 @@ async function handleWipAction(act, path) {
 // the staged diff (new commit); with `sha`, from that commit's own diff.
 async function generateCommitMessage(sha, inputId = 'commit-msg-input') {
   if (!state.repoPath) return;
-  const res = await window.gitApp.suggestCommit(state.repoPath, sha || undefined);
-  if (!res.success) return showToast(`Couldn't generate a message: ${res.error}`);
-  if (!res.message) return showToast('No changes to describe');
-  const input = $(inputId);
-  if (input) input.value = res.message;
-  if (!sha) state.commitMsg = res.message; // track only for the new-commit box
+  // Show a spinner on the button that was clicked while git/analysis runs.
+  const btn = document.querySelector(sha ? '[data-act="reword-suggest"]' : '[data-act="suggest"]');
+  if (btn && btn.disabled) return; // already running
+  const original = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-spinner"></span> Generating…';
+  }
+  try {
+    const res = await window.gitApp.suggestCommit(state.repoPath, sha || undefined);
+    if (!res.success) return showToast(`Couldn't generate a message: ${res.error}`);
+    if (!res.message) return showToast('No changes to describe');
+    const input = $(inputId);
+    if (input) input.value = res.message;
+    if (!sha) state.commitMsg = res.message; // track only for the new-commit box
+  } finally {
+    // The panel may have re-rendered meanwhile; only restore a button still on screen.
+    if (btn && btn.isConnected) { btn.disabled = false; btn.innerHTML = original; }
+  }
 }
 
 async function doCommit() {

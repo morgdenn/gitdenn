@@ -1266,6 +1266,8 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   animation: spin 0.7s linear infinite;
   opacity: 0.9;
 }
+.wd-bulk .btn-spinner { display: inline-block; vertical-align: -2px; margin-right: 4px; }
+.wd-bulk:disabled { opacity: 0.6; cursor: default; }
 .toolbar-btn:disabled { opacity: 0.6; cursor: default; }
 
 .loading-text { font-size: 12px; color: var(--text-sec); }
