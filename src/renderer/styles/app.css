@@ -1178,6 +1178,13 @@ body.col-resizing .col-resizer::after { opacity: 1; }
   outline: none;
 }
 #commit-msg-input:focus { border-color: var(--accent); }
+/* Message boxes: vertically resizable, with a visible grip in the corner */
+#commit-msg-input, .reword textarea { resize: vertical; min-height: 56px; max-height: 70vh; display: block; }
+#commit-msg-input::-webkit-resizer, .reword textarea::-webkit-resizer {
+  background:
+    linear-gradient(135deg, transparent 0 45%, var(--text-muted) 45% 52%, transparent 52% 66%, var(--text-muted) 66% 73%, transparent 73%);
+  border-radius: 0 0 5px 0;
+}
 #commit-btn { width: 100%; }
 #commit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 

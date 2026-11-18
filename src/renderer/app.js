@@ -268,6 +268,25 @@ function bindEvents() {
     if (e.target.id === 'commit-msg-input') state.commitMsg = e.target.value;
   });
 
+  // Remember the size the user dragged the message box to, so it isn't reset
+  // whenever the file list re-renders (stage/unstage, refresh, switching view).
+  // (mousedown on the box, mouseup anywhere — a drag may end outside the box)
+  let msgBoxDrag = null;
+  document.addEventListener('mousedown', e => {
+    const t = e.target;
+    msgBoxDrag = t && (t.id === 'commit-msg-input' || t.id === 'reword-input') ? t : null;
+  });
+  document.addEventListener('mouseup', () => {
+    const t = msgBoxDrag;
+    msgBoxDrag = null;
+    if (!t || !t.isConnected) return;
+    const h = Math.round(t.getBoundingClientRect().height);
+    if (h > 20) {
+      state.msgBoxH = h;
+      try { localStorage.setItem('msgBoxH', String(h)); } catch (err) { /* ignore */ }
+    }
+  });
+
   // Reword (edit message) actions in the commit detail panel
   on('detail-actions', 'click', '[data-act]', el => handleRewordAction(el.dataset.act));
 }
@@ -1916,6 +1935,15 @@ function statusLabel(ch, untracked) {
   }
 }
 
+// Inline height style for the commit/reword message boxes (user-resized height).
+function msgBoxStyle() {
+  if (state.msgBoxH == null) {
+    const saved = parseInt(localStorage.getItem('msgBoxH') || '', 10);
+    state.msgBoxH = saved > 20 ? saved : 0;
+  }
+  return state.msgBoxH ? raw(` style="height:${state.msgBoxH}px"`) : '';
+}
+
 async function renderWipDetail() {
   $('detail-avatar').textContent = '✎';
   $('detail-subject').textContent = 'Uncommitted changes';
@@ -1969,7 +1997,7 @@ async function renderWipDetail() {
           <span>Commit message</span>
           <button class="wd-bulk" data-act="suggest" ${(staged.length || unstaged.length) ? '' : raw('disabled')} title="${staged.length ? 'Generate a message from the staged changes' : 'Nothing staged — generate a message from the working changes'}">✨ Generate</button>
         </div>
-        <textarea id="commit-msg-input" placeholder="Commit message" rows="3">${state.commitMsg || ''}</textarea>
+        <textarea id="commit-msg-input" placeholder="Commit message" rows="3"${msgBoxStyle()}>${state.commitMsg || ''}</textarea>
         <div class="commit-split-btn${staged.length ? '' : ' disabled'}">
           <button class="primary-btn commit-main-btn" data-act="commit" ${staged.length ? '' : raw('disabled')}>
             Commit ${staged.length} file${staged.length === 1 ? '' : 's'}
@@ -2082,7 +2110,7 @@ async function openRewordEditor() {
         <span>Edit message</span>
         <button class="wd-bulk" data-act="reword-suggest" title="Generate a message from this commit's changes">✨ Generate</button>
       </div>
-      <textarea id="reword-input" rows="4">${current}</textarea>
+      <textarea id="reword-input" rows="4"${msgBoxStyle()}>${current}</textarea>
       <div class="reword-btns">
         <button class="secondary-btn" data-act="reword-cancel">Cancel</button>
         <button class="primary-btn" data-act="reword-save">Save</button>
