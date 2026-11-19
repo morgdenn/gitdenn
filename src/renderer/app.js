@@ -2111,6 +2111,7 @@ async function renderWipDetail() {
             <button class="commit-dropdown-item" data-act="amend">Amend previous commit</button>
           </div>
         </div>
+        <button class="secondary-btn fast-commit-btn" data-act="fast-commit" ${(staged.length || unstaged.length) ? '' : raw('disabled')} title="Stage all changes, generate a commit message, commit and push">⚡ Fast commit</button>
       </div>
     </div>
   `);
@@ -2130,6 +2131,7 @@ async function handleWipAction(act, path) {
   if (!state.repoPath) return;
   if (act === 'commit') return doCommit();
   if (act === 'amend')  return doAmend();
+  if (act === 'fast-commit') return doFastCommit();
   if (act === 'suggest') return generateCommitMessage();
   if (act === 'commit-menu') {
     const dd = $('commit-dropdown');
@@ -2181,6 +2183,44 @@ async function doCommit() {
   detailContent.style.display = 'none';
   detailPlaceholder.style.display = 'flex';
   showToast('Committed');
+}
+
+// Stage everything → generate a message → commit → push, in one click.
+let fastCommitBusy = false;
+async function doFastCommit() {
+  if (!state.repoPath || fastCommitBusy) return;
+  fastCommitBusy = true;
+  const repo = state.repoPath;
+  const btn = document.querySelector('[data-act="fast-commit"]');
+  const original = btn ? btn.innerHTML : '';
+  const step = text => { if (btn && btn.isConnected) btn.innerHTML = `<span class="btn-spinner"></span> ${text}`; };
+  if (btn) btn.disabled = true;
+  try {
+    step('Staging…');
+    await window.gitApp.stageAll(repo);
+
+    step('Generating message…');
+    const sug = await window.gitApp.suggestCommit(repo);
+    if (!sug.success) return alert(`Fast commit stopped: couldn't generate a message (${sug.error}). Your changes are staged.`);
+    const msg = (sug.message || '').trim();
+    if (!msg) return showToast('Nothing to commit');
+
+    step('Committing…');
+    const res = await window.gitApp.commit(repo, msg);
+    if (!res.success) return alert(`Fast commit stopped: commit failed (${res.error}). Your changes are staged.`);
+    state.commitMsg = '';
+    state.selectedSha = null;
+    await loadRepo(repo);
+    detailContent.style.display = 'none';
+    detailPlaceholder.style.display = 'flex';
+    showToast(`Committed: ${msg.split('\n')[0]}`);
+
+    // Same path as the Push button (spinner, force-push dialog if rejected).
+    await doPush(false);
+  } finally {
+    fastCommitBusy = false;
+    if (btn && btn.isConnected) { btn.disabled = false; btn.innerHTML = original; }
+  }
 }
 
 async function doAmend() {
