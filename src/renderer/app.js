@@ -60,6 +60,9 @@ window.addEventListener('DOMContentLoaded', () => {
   renderRecentRepos();
   bindEvents();
   setAppIcon();
+  // Reopen the most recently used repo (the list is most-recent-first).
+  const last = state.recentRepos[0];
+  if (last && last.path) loadRepo(last.path, { silent: true });
 });
 
 // Draw the den logo (bear at a round cave) with canvas primitives — matches the
@@ -767,9 +770,10 @@ async function openRepo() {
 }
 
 // ─── Load Repo ────────────────────────────────────────────────────────────────
-async function loadRepo(repoPath) {
+async function loadRepo(repoPath, { silent = false } = {}) {
   if (!repoPath) return;
   const repoChanged = state.repoPath !== repoPath;
+  const previousRepo = state.repoPath;
   state.repoPath = repoPath;
 
   // Show repo view with loading overlay
@@ -783,6 +787,12 @@ async function loadRepo(repoPath) {
   overlay.remove();
 
   if (!result.success) {
+    if (silent) {
+      // Startup auto-open of a repo that's gone (moved/deleted): show the welcome screen quietly.
+      state.repoPath = previousRepo;
+      if (!previousRepo) { repoView.style.display = 'none'; welcomeScreen.style.display = ''; }
+      return;
+    }
     alert(`Failed to load repo: ${result.error}`);
     return;
   }
