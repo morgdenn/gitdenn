@@ -120,6 +120,7 @@ function bindEvents() {
   $('btn-rebase').addEventListener('click', showRebaseModal);
   $('btn-push').addEventListener('click', () => doPush(false));
   $('btn-stash').addEventListener('click', showStashModal);
+  $('btn-fast-commit').addEventListener('click', doFastCommit);
   $('stash-cancel').addEventListener('click', hideStashModal);
   $('stash-confirm').addEventListener('click', doStashPush);
   $('stash-message').addEventListener('keydown', e => { if (e.key === 'Enter') doStashPush(); });
@@ -841,6 +842,7 @@ function resetDetailPanel() {
   closeFileDiff();
   detailContent.style.display = 'none';
   detailPlaceholder.style.display = 'flex';
+  $('fast-commit-bar').hidden = true;
 }
 
 // A synthetic "WIP" commit representing uncommitted changes, linked to HEAD.
@@ -1708,6 +1710,7 @@ async function selectCommit(sha, idx) {
 
   detailPlaceholder.style.display = 'none';
   detailContent.style.display = 'block';
+  $('fast-commit-bar').hidden = !commit.isWip;
 
   if (commit.isWip) {
     await renderWipDetail();
@@ -2059,6 +2062,9 @@ async function renderWipDetail() {
   const staged = files.filter(f => f.staged);
   const unstaged = files.filter(f => f.unstaged);
   $('detail-author').textContent = `${staged.length} staged · ${unstaged.length} unstaged`;
+  // Fast commit lives in a bar pinned to the bottom of the panel, away from Commit.
+  $('fast-commit-bar').hidden = false;
+  $('btn-fast-commit').disabled = fastCommitBusy || !(staged.length || unstaged.length);
 
   // Keep the file whose diff is open highlighted across re-renders of the list.
   const isViewed = (f, kind) => {
@@ -2111,7 +2117,6 @@ async function renderWipDetail() {
             <button class="commit-dropdown-item" data-act="amend">Amend previous commit</button>
           </div>
         </div>
-        <button class="secondary-btn fast-commit-btn" data-act="fast-commit" ${(staged.length || unstaged.length) ? '' : raw('disabled')} title="Stage all changes, generate a commit message, commit and push">⚡ Fast commit</button>
       </div>
     </div>
   `);
@@ -2131,7 +2136,6 @@ async function handleWipAction(act, path) {
   if (!state.repoPath) return;
   if (act === 'commit') return doCommit();
   if (act === 'amend')  return doAmend();
-  if (act === 'fast-commit') return doFastCommit();
   if (act === 'suggest') return generateCommitMessage();
   if (act === 'commit-menu') {
     const dd = $('commit-dropdown');
@@ -2191,7 +2195,7 @@ async function doFastCommit() {
   if (!state.repoPath || fastCommitBusy) return;
   fastCommitBusy = true;
   const repo = state.repoPath;
-  const btn = document.querySelector('[data-act="fast-commit"]');
+  const btn = $('btn-fast-commit');
   const original = btn ? btn.innerHTML : '';
   const step = text => { if (btn && btn.isConnected) btn.innerHTML = `<span class="btn-spinner"></span> ${text}`; };
   if (btn) btn.disabled = true;

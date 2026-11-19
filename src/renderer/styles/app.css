@@ -1391,5 +1391,11 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 .stash-item .secondary-btn, .stash-item .danger-btn { padding: 3px 8px; font-size: 11px; }
 .stash-empty { font-size: 12px; color: var(--text-muted); padding: 4px 0; }
 
-.fast-commit-btn { width: 100%; margin-top: 6px; }
-.fast-commit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+
+
+/* Fast commit push: pinned to the very bottom of the right panel, well away from Commit */
+#fast-commit-bar { flex-shrink: 0; padding: 10px 16px; border-top: 1px solid var(--border-lt); background: var(--bg-panel); }
+#fast-commit-bar[hidden], #detail-content[style*="display: none"] ~ #fast-commit-bar { display: none; }
+#btn-fast-commit { width: 100%; }
+#btn-fast-commit:disabled { opacity: 0.5; cursor: not-allowed; }
