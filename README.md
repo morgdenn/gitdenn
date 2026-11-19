@@ -35,6 +35,7 @@
 - **Stale branches** (no commits for 3+ months — GitHub's own definition, computed locally from each branch tip's commit date) are dimmed in the branch lists; a **Hide/Show stale (N)** button in the panel header toggles them (remembered)
 - **Unpushed commits highlight Push**: when the current branch is ahead of its remote, the toolbar Push button stays in its hover (highlighted) state and its tooltip shows the count; likewise Pull is highlighted when the remote has commits to pull down
 - **Pull and rebase auto-stash** uncommitted changes first and restore them afterwards, so local edits no longer block a pull; common git failures are shown in plain language
+- **Stash** toolbar button: stash changes (optional message, untracked files included by default), with a count badge and a list to apply, pop or drop saved stashes
 - Right-click a local branch to **Pull branch** (fast-forwards it even if it isn't checked out), copy its name, rename, or delete
 - Double-click a remote branch to check it out locally; double-click a local branch to switch
 - **Create a branch**, **fetch**, **pull**, and **push** (auto-sets upstream) from the toolbar
@@ -122,7 +123,7 @@ The **graph layout engine** in `app.js` implements a lane-allocation algorithm:
 - [x] Branch delete / rename
 - [x] Pull any branch, live ahead/behind with background fetch
 - [x] Squash commits
-- [ ] Stash management
+- [x] Stash management (stash button, apply / pop / drop)
 - [ ] Search commits
 - [ ] Drag-and-drop rebase
 

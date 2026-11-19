@@ -614,6 +614,49 @@ ipcMain.handle('git:pullRebase',async (event, { repoPath }) => {
   }
 });
 
+// ─── Stash ────────────────────────────────────────────────────────────────────
+ipcMain.handle('git:stashList', async (event, { repoPath }) => {
+  try {
+    const out = await simpleGit(repoPath).raw(['stash', 'list', '--format=%gd%x1f%gs%x1f%cr']);
+    const stashes = out.split('\n').filter(Boolean).map(line => {
+      const [ref, subject, when] = line.split('\x1f');
+      const idx = parseInt((/\{(\d+)\}/.exec(ref) || [])[1], 10);
+      // Subjects look like "On <branch>: <message>" or "WIP on <branch>: <sha> <msg>".
+      const m = /^(?:WIP on|On) ([^:]+): (.*)$/.exec(subject || '');
+      return { index: idx, branch: m ? m[1] : '', message: m ? m[2] : (subject || ''), when: when || '' };
+    });
+    return { success: true, stashes };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('git:stashPush', async (event, { repoPath, message, includeUntracked }) => {
+  try {
+    const args = ['stash', 'push'];
+    if (includeUntracked) args.push('--include-untracked');
+    if (message && message.trim()) args.push('-m', message.trim());
+    const out = await simpleGit(repoPath).raw(args);
+    if (/No local changes to save/i.test(out)) return { success: false, error: 'There are no changes to stash.' };
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: friendlyPullError(err) };
+  }
+});
+
+// op: 'apply' (keep the stash), 'pop' (apply + remove) or 'drop' (discard).
+ipcMain.handle('git:stashOp', async (event, { repoPath, op, index }) => {
+  try {
+    if (!['apply', 'pop', 'drop'].includes(op) || !Number.isInteger(index) || index < 0) {
+      return { success: false, error: 'Invalid stash operation.' };
+    }
+    await simpleGit(repoPath).raw(['stash', op, `stash@{${index}}`]);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: friendlyPullError(err) };
+  }
+});
+
 ipcMain.handle('git:rebaseOnto', async (event, { repoPath, branch }) => {
   try {
     const git = simpleGit(repoPath);

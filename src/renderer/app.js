@@ -119,6 +119,11 @@ function bindEvents() {
   $('btn-pull').addEventListener('click', doPull);
   $('btn-rebase').addEventListener('click', showRebaseModal);
   $('btn-push').addEventListener('click', showPushModal);
+  $('btn-stash').addEventListener('click', showStashModal);
+  $('stash-cancel').addEventListener('click', hideStashModal);
+  $('stash-confirm').addEventListener('click', doStashPush);
+  $('stash-message').addEventListener('keydown', e => { if (e.key === 'Enter') doStashPush(); });
+  on('stash-list', 'click', '[data-op]', el => doStashOp(el.dataset.op, +el.dataset.index));
   $('btn-github').addEventListener('click', () => {
     if (state.githubUrl) window.gitApp.openExternal(state.githubUrl);
   });
@@ -152,7 +157,7 @@ function bindEvents() {
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); hideRebaseModal(); hideSquashModal(); closeFileDiff(); hideBranchCtxMenu(); hideCommitCtxMenu(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
+    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); hideRebaseModal(); hideSquashModal(); hideStashModal(); closeFileDiff(); hideBranchCtxMenu(); hideCommitCtxMenu(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'r') loadRepo(state.repoPath);
     // Ctrl/Cmd+Shift+E → open the repo in VS Code
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'e' || e.key === 'E')) {
@@ -604,6 +609,68 @@ function hideBranchModal() {
   $('branch-name').value = '';
 }
 
+// ─── Stash ────────────────────────────────────────────────────────────────────
+async function refreshStashes() {
+  if (!state.repoPath) return;
+  const repo = state.repoPath;
+  const res = await window.gitApp.stashList(repo);
+  if (repo !== state.repoPath) return;
+  state.stashes = res.success ? res.stashes : [];
+  const badge = $('stash-count');
+  badge.textContent = state.stashes.length;
+  badge.style.display = state.stashes.length ? '' : 'none';
+  if ($('stash-modal').style.display !== 'none') renderStashList();
+}
+
+function renderStashList() {
+  const list = state.stashes || [];
+  render('stash-list', list.length ? list.map(s => html`
+    <div class="stash-item">
+      <div class="stash-info">
+        <div class="stash-msg" title="${s.message}">${s.message || '(no message)'}</div>
+        <div class="stash-meta">${s.branch ? 'on ' + s.branch + ' · ' : ''}${s.when}</div>
+      </div>
+      <button class="secondary-btn" data-op="apply" data-index="${s.index}" title="Re-apply and keep the stash">Apply</button>
+      <button class="secondary-btn" data-op="pop" data-index="${s.index}" title="Re-apply and remove the stash">Pop</button>
+      <button class="danger-btn" data-op="drop" data-index="${s.index}" title="Delete the stash">Drop</button>
+    </div>`) : [html`<div class="stash-empty">No stashes</div>`]);
+}
+
+function showStashModal() {
+  if (!state.repoPath) return;
+  $('stash-modal').style.display = 'flex';
+  $('stash-message').value = '';
+  $('stash-message').focus();
+  renderStashList();
+  refreshStashes();
+}
+function hideStashModal() {
+  $('stash-modal').style.display = 'none';
+}
+
+async function doStashPush() {
+  if (!state.repoPath) return;
+  const btn = $('stash-confirm');
+  btn.disabled = true;
+  const res = await window.gitApp.stashPush(state.repoPath, $('stash-message').value, $('stash-untracked').checked);
+  btn.disabled = false;
+  if (!res.success) { alert(`Stash failed: ${res.error}`); return; }
+  showToast('Changes stashed');
+  $('stash-message').value = '';
+  await refreshStashes();
+  await loadRepo(state.repoPath);
+}
+
+async function doStashOp(op, index) {
+  if (!state.repoPath) return;
+  if (op === 'drop' && !confirm('Delete this stash? This cannot be undone.')) return;
+  const res = await window.gitApp.stashOp(state.repoPath, op, index);
+  if (!res.success) { alert(`Stash ${op} failed: ${res.error}`); await refreshStashes(); return; }
+  showToast(op === 'drop' ? 'Stash dropped' : op === 'pop' ? 'Stash applied and removed' : 'Stash applied');
+  await refreshStashes();
+  if (op !== 'drop') await loadRepo(state.repoPath);
+}
+
 function showPushModal() {
   if (!state.repoPath) return;
   const note = $('push-modal-note');
@@ -753,6 +820,7 @@ async function loadRepo(repoPath) {
   updateRepoLinks();
   $('branches-panel').classList.add('has-repo');
   renderBranches();
+  refreshStashes();
   renderStatusChips(state.status);
   addRecentRepo(repoPath);
   renderRecentRepos();

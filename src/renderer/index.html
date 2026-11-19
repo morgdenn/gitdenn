@@ -170,6 +170,24 @@
         </div>
       </div>
 
+      <!-- Stash modal -->
+      <div id="stash-modal" class="modal-overlay" style="display:none;">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>Stash</h2>
+            <button class="modal-close" id="stash-cancel">✕</button>
+          </div>
+          <div class="modal-body">
+            <label>Stash current changes</label>
+            <input type="text" id="stash-message" placeholder="Message (optional)" />
+            <label class="stash-check"><input type="checkbox" id="stash-untracked" checked /> Include untracked files</label>
+            <div class="stash-actions"><button class="primary-btn" id="stash-confirm">Stash changes</button></div>
+            <label style="margin-top:10px;">Saved stashes</label>
+            <div id="stash-list" class="stash-list"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Push modal -->
       <div id="push-modal" class="modal-overlay" style="display:none;">
         <div class="modal">
@@ -264,6 +282,14 @@
                 <path d="M9.5 9l-1 .5.5-1" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
               Rebase
+            </button>
+            <button class="toolbar-btn" id="btn-stash" title="Stash changes">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <rect x="1.5" y="2" width="11" height="3" rx="0.8" stroke="currentColor" stroke-width="1.2"/>
+                <path d="M2.5 5v5.5a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                <path d="M5.5 8h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+              </svg>
+              Stash<span class="stash-count" id="stash-count" style="display:none;"></span>
             </button>
             <button class="toolbar-btn" id="btn-push" title="Push current branch">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
