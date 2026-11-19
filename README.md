@@ -34,6 +34,7 @@
 - **Ahead/behind** indicators vs. upstream (`N↑` / `N↓`), kept live: local refs re-checked every 5s and a background `git fetch` every 60s
 - **Stale branches** (no commits for 3+ months — GitHub's own definition, computed locally from each branch tip's commit date) are dimmed in the branch lists; a **Hide/Show stale (N)** button in the panel header toggles them (remembered)
 - **Unpushed commits highlight Push**: when the current branch is ahead of its remote, the toolbar Push button stays in its hover (highlighted) state and its tooltip shows the count; likewise Pull is highlighted when the remote has commits to pull down
+- **Push goes straight through**; the force-push dialog only appears if the remote rejected the push (it has commits you don't)
 - **Pull and rebase auto-stash** uncommitted changes first and restore them afterwards, so local edits no longer block a pull; common git failures are shown in plain language
 - **Stash** toolbar button: stash changes (optional message, untracked files included by default), with a count badge and a list to apply, pop or drop saved stashes
 - Right-click a local branch to **Pull branch** (fast-forwards it even if it isn't checked out), copy its name, rename, or delete

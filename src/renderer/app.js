@@ -118,7 +118,7 @@ function bindEvents() {
   $('btn-branch').addEventListener('click', showBranchModal);
   $('btn-pull').addEventListener('click', doPull);
   $('btn-rebase').addEventListener('click', showRebaseModal);
-  $('btn-push').addEventListener('click', showPushModal);
+  $('btn-push').addEventListener('click', () => doPush(false));
   $('btn-stash').addEventListener('click', showStashModal);
   $('stash-cancel').addEventListener('click', hideStashModal);
   $('stash-confirm').addEventListener('click', doStashPush);
@@ -671,13 +671,13 @@ async function doStashOp(op, index) {
   if (op !== 'drop') await loadRepo(state.repoPath);
 }
 
+// Only shown when a normal push was rejected because the remote has commits we
+// don't: the options are then to cancel (and pull first) or to force push.
 function showPushModal() {
   if (!state.repoPath) return;
-  const note = $('push-modal-note');
-  const ahead = (state.tracking || {})[state.currentBranch];
-  note.textContent = ahead && ahead.ahead
-    ? `${ahead.ahead} commit${ahead.ahead === 1 ? '' : 's'} ahead of remote`
-    : '';
+  $('push-modal-title').textContent = 'The remote has commits you don’t have, so the push was rejected.';
+  $('push-modal-note').textContent = 'Cancel and pull first to keep their work, or force push to overwrite the remote branch with yours (uses --force-with-lease).';
+  $('push-confirm').style.display = 'none';
   pushModal.style.display = 'flex';
 }
 function hidePushModal() {
@@ -2439,6 +2439,11 @@ async function doPush(force = false) {
   btn.disabled = false;
   btn.innerHTML = original;
   if (!result.success) {
+    // Rejected because the remote moved on: offer force push instead of a raw error.
+    if (!force && /rejected|non-fast-forward|fetch first|failed to push some refs/i.test(result.error || '')) {
+      showPushModal();
+      return;
+    }
     alert(`Push failed: ${result.error}`);
     return;
   }
