@@ -1399,3 +1399,7 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 #fast-commit-bar[hidden], #detail-content[style*="display: none"] ~ #fast-commit-bar { display: none; }
 #btn-fast-commit { width: 100%; }
 #btn-fast-commit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Uncommitted changes have no SHA or refs: don't draw an empty badge / row */
+#detail-sha:empty { display: none; }
+#detail-sha-row:has(#detail-sha:empty):has(#detail-refs:empty) { display: none; }
