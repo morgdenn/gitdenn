@@ -123,6 +123,7 @@ function bindEvents() {
   $('btn-rebase').addEventListener('click', showRebaseModal);
   $('btn-push').addEventListener('click', () => doPush(false));
   $('btn-stash').addEventListener('click', showStashModal);
+  $('btn-repo-sort').addEventListener('click', toggleRepoSort);
   $('btn-fast-commit').addEventListener('click', doFastCommit);
   $('stash-cancel').addEventListener('click', hideStashModal);
   $('stash-confirm').addEventListener('click', doStashPush);
@@ -485,16 +486,37 @@ function initBranchSplit() {
   });
 }
 
-// ─── Recent Repos ─────────────────────────────────────────────────────────────
+// ─── Repos list ───────────────────────────────────────────────────────────────
+function repoSortMode() {
+  try { return localStorage.getItem('repoSort') === 'alpha' ? 'alpha' : 'recent'; } catch (e) { return 'recent'; }
+}
+function updateRepoSortButton() {
+  const btn = $('btn-repo-sort');
+  if (!btn) return;
+  const alpha = repoSortMode() === 'alpha';
+  btn.title = alpha ? 'Sorted A–Z — click to sort by most recent' : 'Sorted by most recent — click to sort A–Z';
+  btn.innerHTML = alpha
+    ? '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><text x="0.5" y="6" font-size="6.5" font-weight="700" fill="currentColor" font-family="sans-serif">A</text><text x="0.5" y="13" font-size="6.5" font-weight="700" fill="currentColor" font-family="sans-serif">Z</text><path d="M10 2v9M8 9l2 2.5L12 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    : '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.2" stroke="currentColor" stroke-width="1.2"/><path d="M7 4v3.2l2 1.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+function toggleRepoSort() {
+  try { localStorage.setItem('repoSort', repoSortMode() === 'alpha' ? 'recent' : 'alpha'); } catch (e) {}
+  renderRecentRepos();
+}
+
 function renderRecentRepos() {
   const list = $('recent-repos-list');
+  updateRepoSortButton();
   if (state.recentRepos.length === 0) {
     list.innerHTML = '<div class="empty-sidebar">No repos yet</div>';
     return;
   }
   const icons = loadOrgIcons();
   const projIcons = loadProjectIcons();
-  list.innerHTML = state.recentRepos.map((r, i) => {
+  const sorted = repoSortMode() === 'alpha'
+    ? [...state.recentRepos].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+    : state.recentRepos; // already most-recent-first
+  list.innerHTML = sorted.map((r, i) => {
     // A logo/favicon found inside the project wins over the GitHub owner avatar.
     const pi = projIcons[r.path];
     const ic = icons[r.path];
