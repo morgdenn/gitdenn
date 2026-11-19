@@ -553,12 +553,24 @@ ipcMain.handle('github:orgIcon', async (event, { repoPath }) => {
 });
 
 // Pull the current branch from its upstream
+// Turn the most common raw git failures into something readable; otherwise keep
+// the original text (minus the noisy line-ending warnings).
+function friendlyPullError(err) {
+  const msg = String(err && err.message || err);
+  if (/CONFLICT|Automatic merge failed|could not apply|Applying autostash resulted in conflicts/i.test(msg)) {
+    return 'The pull brought in changes that conflict with yours. Resolve the conflicted files, then commit (your stashed changes, if any, are kept in "git stash").\n\n' + msg;
+  }
+  return msg.split('\n').filter(l => !/^warning: in the working copy/i.test(l)).join('\n').trim();
+}
+
+// Pulls stash uncommitted changes first and restore them afterwards (--autostash),
+// so local edits to files the pull touches no longer block it.
 ipcMain.handle('git:pull', async (event, { repoPath }) => {
   try {
-    await simpleGit(repoPath).pull();
+    await simpleGit(repoPath).pull(['--autostash']);
     return { success: true };
   } catch (err) {
-    return { success: false, error: err.message };
+    return { success: false, error: friendlyPullError(err) };
   }
 });
 
@@ -570,7 +582,7 @@ ipcMain.handle('git:pullBranch', async (event, { repoPath, branch }) => {
     const git = simpleGit(repoPath);
     const current = (await git.raw(['rev-parse', '--abbrev-ref', 'HEAD'])).trim();
     if (current === branch) {
-      await git.pull();
+      await git.pull(['--autostash']);
       return { success: true, upToDate: false };
     }
     const cfg = async key => {
@@ -588,17 +600,17 @@ ipcMain.handle('git:pullBranch', async (event, { repoPath, branch }) => {
   } catch (err) {
     const msg = /non-fast-forward|rejected/i.test(err.message)
       ? `Cannot fast-forward '${branch}' — it has diverged from its upstream. Check it out and pull/rebase instead.`
-      : err.message;
+      : friendlyPullError(err);
     return { success: false, error: msg };
   }
 });
 
 ipcMain.handle('git:pullRebase',async (event, { repoPath }) => {
   try {
-    await simpleGit(repoPath).pull(['--rebase']);
+    await simpleGit(repoPath).pull(['--rebase', '--autostash']);
     return { success: true };
   } catch (err) {
-    return { success: false, error: err.message };
+    return { success: false, error: friendlyPullError(err) };
   }
 });
 
@@ -606,10 +618,10 @@ ipcMain.handle('git:rebaseOnto', async (event, { repoPath, branch }) => {
   try {
     const git = simpleGit(repoPath);
     await git.fetch('origin', branch);
-    await git.rebase([`origin/${branch}`]);
+    await git.rebase(['--autostash', `origin/${branch}`]);
     return { success: true };
   } catch (err) {
-    return { success: false, error: err.message };
+    return { success: false, error: friendlyPullError(err) };
   }
 });
 
