@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('gitApp', {
+  platform: process.platform,
   // Repo management
   clone: (url, targetDir) => ipcRenderer.invoke('git:clone', { url, targetDir }),
   openRepo: () => ipcRenderer.invoke('dialog:openRepo'),

@@ -60,6 +60,7 @@ window.addEventListener('DOMContentLoaded', () => {
   renderRecentRepos();
   bindEvents();
   setAppIcon();
+  nameOpenWithItems();
   // Reopen the most recently used repo (the list is most-recent-first).
   const last = state.recentRepos[0];
   if (last && last.path) loadRepo(last.path, { silent: true });
@@ -2444,6 +2445,13 @@ function updateRepoLinks() {
   const url = githubWebUrl(state.remoteUrl);
   state.githubUrl = url;
   $('open-with-github').style.display = url ? '' : 'none';
+}
+
+// Name the file-manager entry after the OS: Explorer (Windows), Finder (macOS), Files (Linux).
+function nameOpenWithItems() {
+  const label = { win32: 'Explorer', darwin: 'Finder' }[window.gitApp.platform] || 'Files';
+  const el = document.querySelector('#open-with-menu [data-open="explorer"]');
+  if (el) el.textContent = label;
 }
 
 async function openRepoWith(target) {
