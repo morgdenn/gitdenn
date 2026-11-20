@@ -34,14 +34,17 @@ const NODE_FONT = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", system
 // The app's theme green is reserved for the repo's default branch (main/master)
 // and is deliberately absent from the palette used for every other branch.
 const MAIN_COLOR = '#a6e22e';
+// When the repo's default branch is not main/master (e.g. "staging") and a
+// main/master also exists, the default branch gets the second lane and this colour.
+const SECOND_COLOR = '#66d9ef';
 const LANE_COLORS = [
-  '#66d9ef', '#f92672', '#fd971f', '#e6db74',
-  '#a1efe4', '#f45b8f', '#78dce8', '#ffa94d',
-  '#c792ea', '#ff8b7b',
+  '#f92672', '#fd971f', '#e6db74', '#a1efe4',
+  '#f45b8f', '#78dce8', '#ffa94d', '#c792ea',
+  '#ff8b7b', '#e0a3ff',
 ];
 const laneColor = lane => LANE_COLORS[lane % LANE_COLORS.length];
 // Colour for a graph row: the default branch's commits are green, others by lane.
-const rowColor = row => row.isMain ? MAIN_COLOR : laneColor(row.lane);
+const rowColor = row => row.isMain ? MAIN_COLOR : row.isSecond ? SECOND_COLOR : laneColor(row.lane);
 
 // Author initials for avatar nodes: "Ian Anderson" → "IA", "Kevin" → "K".
 function authorInitials(name) {
@@ -1348,38 +1351,46 @@ function renderStatusChips(status) {
 function computeGraphLayout(commits) {
   // Each commit gets assigned a lane (column).
   // Rules:
-  //   • Lane 0 (leftmost) is reserved for the default branch (main/master): its
-  //     first-parent line always sits there and no other branch may use it.
-  //   • Otherwise a commit takes the lane a child reserved for it, else the
+  //   - Lane 0 (leftmost) is reserved for main/master (or, if the repo has
+  //     neither, its default branch): that branch's first-parent line always sits
+  //     there and no other branch may use it.
+  //   - If the repo's default branch is something else (e.g. "staging") and a
+  //     main/master also exists, the default branch gets lane 1, also reserved.
+  //   - Otherwise a commit takes the lane a child reserved for it, else the
   //     leftmost free lane; a merged-in (2nd+) parent gets a new lane.
-  //   • A lane is released once the line that occupied it has reached its parent.
+  //   - A lane is released once the line that occupied it has reached its parent.
   const shaToIndex = new Map();
   commits.forEach((c, i) => shaToIndex.set(c.sha, i));
 
-  const trunk = findTrunk(commits, shaToIndex);
-  const lanes = trunk.size ? ['\0trunk'] : []; // lanes[i] = owner sha, or null when free
+  const { main, second } = findTrunk(commits, shaToIndex);
+  const reserved = main.size ? (second.size ? 2 : 1) : 0;
+  const lanes = ['\0main', '\0second'].slice(0, reserved); // lanes[i] = owner sha, or null when free
   const rows  = [];
+  // Fixed lane of a commit on a reserved branch, else -1.
+  const fixedLane = sha => main.has(sha) ? 0 : second.has(sha) ? 1 : -1;
 
   function allocLane(sha) {
-    // prefer an existing null slot (never lane 0 when it is reserved: it is non-null)
+    // prefer an existing null slot (reserved lanes are non-null, so never picked)
     const empty = lanes.indexOf(null);
     if (empty !== -1) { lanes[empty] = sha; return empty; }
     lanes.push(sha);
     return lanes.length - 1;
   }
 
-  // Open lanes for each commit (sha → lane index), and lanes to free once a
+  // Open lanes for each commit (sha -> lane index), and lanes to free once a
   // given commit's row is reached (a line descending in them ends there).
   const openLanes = new Map();
   const releaseAt = new Map();
+  const releaseLater = (sha, lane) => {
+    if (!releaseAt.has(sha)) releaseAt.set(sha, []);
+    releaseAt.get(sha).push(lane);
+  };
 
   for (let i = 0; i < commits.length; i++) {
     const commit = commits[i];
-    const isTrunk = trunk.has(commit.sha);
-    let lane;
+    let lane = fixedLane(commit.sha);
 
-    if (isTrunk) {
-      lane = 0;
+    if (lane >= 0) {
       openLanes.delete(commit.sha);
     } else if (openLanes.has(commit.sha)) {
       // Already allocated a lane by a child
@@ -1391,7 +1402,7 @@ function computeGraphLayout(commits) {
 
     // Lines that were descending to this commit have arrived: free their lanes.
     if (releaseAt.has(commit.sha)) {
-      for (const l of releaseAt.get(commit.sha)) if (l !== lane && l !== 0) lanes[l] = null;
+      for (const l of releaseAt.get(commit.sha)) if (l !== lane && l >= reserved) lanes[l] = null;
       releaseAt.delete(commit.sha);
     }
 
@@ -1403,24 +1414,21 @@ function computeGraphLayout(commits) {
       if (parentIdx === undefined) return; // parent not in visible range
 
       let parentLane;
-      if (trunk.has(parentSha)) {
-        parentLane = 0;
-        openLanes.set(parentSha, 0);
-        // A branch's line descends in its own lane until it reaches the trunk.
-        if (pi === 0 && lane !== 0) {
-          if (!releaseAt.has(parentSha)) releaseAt.set(parentSha, []);
-          releaseAt.get(parentSha).push(lane);
-        }
+      const fixed = fixedLane(parentSha);
+      if (fixed >= 0) {
+        parentLane = fixed;
+        openLanes.set(parentSha, fixed);
+        // A branch's line descends in its own lane until it reaches the reserved one.
+        if (pi === 0 && lane >= reserved) releaseLater(parentSha, lane);
       } else if (openLanes.has(parentSha)) {
         parentLane = openLanes.get(parentSha);
-        if (pi === 0 && lane !== parentLane && lane !== 0) {
+        if (pi === 0 && lane !== parentLane && lane >= reserved) {
           // Converging into a lane that is already open: ours is free after the parent row.
-          if (!releaseAt.has(parentSha)) releaseAt.set(parentSha, []);
-          releaseAt.get(parentSha).push(lane);
+          releaseLater(parentSha, lane);
         }
       } else {
         // Allocate a lane for this parent
-        if (pi === 0 && lane !== 0) {
+        if (pi === 0 && lane >= reserved) {
           // First parent: reuse this commit's lane
           parentLane = lane;
           lanes[lane] = parentSha;
@@ -1432,37 +1440,54 @@ function computeGraphLayout(commits) {
       connections.push({ fromLane: lane, toLane: parentLane, parentSha, first: pi === 0 });
     });
 
-    // If no parents (root commit), free the lane (never the reserved trunk lane)
-    if (commit.parents.length === 0 && lane !== 0) {
+    // If no parents (root commit), free the lane (never a reserved lane)
+    if (commit.parents.length === 0 && lane >= reserved) {
       lanes[lane] = null;
     }
 
     const maxLane = Math.max(lane, ...connections.map(c => Math.max(c.fromLane, c.toLane)), 0);
-    rows.push({ commit, lane, connections, maxLane, isMain: trunk.has(commit.sha) });
+    rows.push({ commit, lane, connections, maxLane, isMain: main.has(commit.sha), isSecond: second.has(commit.sha) });
   }
 
   return rows;
 }
 
-// The default branch's first-parent line (the "trunk"): walks from the tip of the
-// default branch (origin's and the local one, so unpushed local commits count
-// too). The uncommitted-changes row joins it when it sits on the trunk's tip.
+// The reserved branches' first-parent lines.
+//   main   - main/master (preferring the repo's default if that is one of them);
+//            if neither exists, the default branch itself.
+//   second - the repo's default branch when it is neither (e.g. "staging") and
+//            a main/master exists; only the part not already on main's line.
+// Each walks from the branch tip (origin's and the local one, so unpushed local
+// commits count). The uncommitted-changes row joins the line it sits on top of.
 function findTrunk(commits, shaToIndex) {
-  const trunk = new Set();
+  const main = new Set(), second = new Set();
   const shas = state.branchShas || {};
-  const names = [...new Set([state.defaultBranch, 'main', 'master'].filter(Boolean))];
-  const name = names.find(n => shas['remotes/origin/' + n] || shas[n]);
-  if (!name) return trunk;
-  for (const tip of [shas['remotes/origin/' + name], shas[name]]) {
-    let i = tip ? shaToIndex.get(tip) : undefined;
-    while (i !== undefined && !trunk.has(commits[i].sha)) {
-      trunk.add(commits[i].sha);
-      const parent = commits[i].parents[0];
-      i = parent ? shaToIndex.get(parent) : undefined;
+  const exists = n => !!(n && (shas['remotes/origin/' + n] || shas[n]));
+  const def = state.defaultBranch;
+  const primary = ['main', 'master'].includes(def) && exists(def)
+    ? def
+    : ['main', 'master'].find(exists) || (exists(def) ? def : null);
+  if (!primary) return { main, second };
+
+  const walk = (name, into, stopAt) => {
+    for (const tip of [shas['remotes/origin/' + name], shas[name]]) {
+      let i = tip ? shaToIndex.get(tip) : undefined;
+      while (i !== undefined && !into.has(commits[i].sha) && !(stopAt && stopAt.has(commits[i].sha))) {
+        into.add(commits[i].sha);
+        const parent = commits[i].parents[0];
+        i = parent ? shaToIndex.get(parent) : undefined;
+      }
     }
+  };
+  walk(primary, main);
+  if (def && def !== primary && exists(def)) walk(def, second, main);
+
+  for (const c of commits) {
+    if (!c.isWip || !c.parents[0]) continue;
+    if (main.has(c.parents[0])) main.add(c.sha);
+    else if (second.has(c.parents[0])) second.add(c.sha);
   }
-  for (const c of commits) if (c.isWip && c.parents[0] && trunk.has(c.parents[0])) trunk.add(c.sha);
-  return trunk;
+  return { main, second };
 }
 
 // ─── Render Commit Rows (DOM) ─────────────────────────────────────────────────
@@ -1627,13 +1652,16 @@ function paintGraph(graphData) {
   // Two passes: every other branch's lines first, then the default branch's green
   // trunk last, so the trunk is always on top and other lines (e.g. a merge line
   // running down the trunk's lane) only show where they leave it.
-  for (const trunkPass of [false, true])
+  for (const pass of [0, 1, 2])
   for (let i = 0; i <= lastRow; i++) {
     const row = graphData[i];
     row.connections.forEach(({ fromLane, toLane, parentSha, first }) => {
       const parentRow = shaToIndex.has(parentSha) ? shaToIndex.get(parentSha) : -1;
       if (parentRow < 0 || parentRow < firstRow) return;
-      if ((first && row.isMain && graphData[parentRow].isMain) !== trunkPass) return;
+      // Pass 0: everything else; 1: the second reserved branch; 2: main's line on top.
+      const trunk = first && row.isMain && graphData[parentRow].isMain;
+      const secondLine = !trunk && first && row.isSecond;
+      if ((trunk ? 2 : secondLine ? 1 : 0) !== pass) return;
 
       const x1 = laneX(fromLane);
       const y1 = rowY(i);
@@ -1643,8 +1671,7 @@ function paintGraph(graphData) {
       ctx.beginPath();
       // Colour the line after the lane it mostly runs in.
       // The default branch's own first-parent line is the reserved green.
-      const trunk = first && row.isMain && graphData[parentRow].isMain;
-      ctx.strokeStyle = trunk ? MAIN_COLOR : color(first ? fromLane : toLane);
+      ctx.strokeStyle = trunk ? MAIN_COLOR : secondLine ? SECOND_COLOR : color(first ? fromLane : toLane);
       ctx.lineWidth = 2;
       ctx.moveTo(x1, y1);
 
