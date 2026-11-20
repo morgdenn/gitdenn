@@ -1342,41 +1342,52 @@ function renderStatusChips(status) {
 // ─── Graph Layout Engine ──────────────────────────────────────────────────────
 function computeGraphLayout(commits) {
   // Each commit gets assigned a lane (column).
-  // We track which lanes are "open" (i.e., expecting a child commit to close them).
+  // Rules:
+  //   • Lane 0 (leftmost) is reserved for the default branch (main/master): its
+  //     first-parent line always sits there and no other branch may use it.
+  //   • Otherwise a commit takes the lane a child reserved for it, else the
+  //     leftmost free lane; a merged-in (2nd+) parent gets a new lane.
+  //   • A lane is released once the line that occupied it has reached its parent.
   const shaToIndex = new Map();
   commits.forEach((c, i) => shaToIndex.set(c.sha, i));
 
-  const lanes = [];      // lanes[i] = sha of the commit that currently owns this lane, or null
+  const trunk = findTrunk(commits, shaToIndex);
+  const lanes = trunk.size ? ['\0trunk'] : []; // lanes[i] = owner sha, or null when free
   const rows  = [];
 
-  function findLane(sha) {
-    return lanes.indexOf(sha);
-  }
-  function freeLane(sha) {
-    const i = lanes.indexOf(sha);
-    if (i !== -1) lanes[i] = null;
-  }
   function allocLane(sha) {
-    // prefer an existing null slot
+    // prefer an existing null slot (never lane 0 when it is reserved: it is non-null)
     const empty = lanes.indexOf(null);
     if (empty !== -1) { lanes[empty] = sha; return empty; }
     lanes.push(sha);
     return lanes.length - 1;
   }
 
-  // Open lanes for each commit (sha → lane index)
+  // Open lanes for each commit (sha → lane index), and lanes to free once a
+  // given commit's row is reached (a line descending in them ends there).
   const openLanes = new Map();
+  const releaseAt = new Map();
 
   for (let i = 0; i < commits.length; i++) {
     const commit = commits[i];
+    const isTrunk = trunk.has(commit.sha);
     let lane;
 
-    // If this commit was already allocated a lane by a child, use it
-    if (openLanes.has(commit.sha)) {
+    if (isTrunk) {
+      lane = 0;
+      openLanes.delete(commit.sha);
+    } else if (openLanes.has(commit.sha)) {
+      // Already allocated a lane by a child
       lane = openLanes.get(commit.sha);
       openLanes.delete(commit.sha);
     } else {
       lane = allocLane(commit.sha);
+    }
+
+    // Lines that were descending to this commit have arrived: free their lanes.
+    if (releaseAt.has(commit.sha)) {
+      for (const l of releaseAt.get(commit.sha)) if (l !== lane && l !== 0) lanes[l] = null;
+      releaseAt.delete(commit.sha);
     }
 
     // Connections: lines from this commit to each parent
@@ -1387,11 +1398,24 @@ function computeGraphLayout(commits) {
       if (parentIdx === undefined) return; // parent not in visible range
 
       let parentLane;
-      if (openLanes.has(parentSha)) {
+      if (trunk.has(parentSha)) {
+        parentLane = 0;
+        openLanes.set(parentSha, 0);
+        // A branch's line descends in its own lane until it reaches the trunk.
+        if (pi === 0 && lane !== 0) {
+          if (!releaseAt.has(parentSha)) releaseAt.set(parentSha, []);
+          releaseAt.get(parentSha).push(lane);
+        }
+      } else if (openLanes.has(parentSha)) {
         parentLane = openLanes.get(parentSha);
+        if (pi === 0 && lane !== parentLane && lane !== 0) {
+          // Converging into a lane that is already open: ours is free after the parent row.
+          if (!releaseAt.has(parentSha)) releaseAt.set(parentSha, []);
+          releaseAt.get(parentSha).push(lane);
+        }
       } else {
         // Allocate a lane for this parent
-        if (pi === 0) {
+        if (pi === 0 && lane !== 0) {
           // First parent: reuse this commit's lane
           parentLane = lane;
           lanes[lane] = parentSha;
@@ -1403,35 +1427,37 @@ function computeGraphLayout(commits) {
       connections.push({ fromLane: lane, toLane: parentLane, parentSha, first: pi === 0 });
     });
 
-    // If no parents (root commit), free the lane
-    if (commit.parents.length === 0) {
-      freeLane(commit.sha);
+    // If no parents (root commit), free the lane (never the reserved trunk lane)
+    if (commit.parents.length === 0 && lane !== 0) {
+      lanes[lane] = null;
     }
 
     const maxLane = Math.max(lane, ...connections.map(c => Math.max(c.fromLane, c.toLane)), 0);
-    rows.push({ commit, lane, connections, maxLane, isMain: false });
+    rows.push({ commit, lane, connections, maxLane, isMain: trunk.has(commit.sha) });
   }
 
-  markDefaultBranch(rows, shaToIndex);
   return rows;
 }
 
-// Flag the commits on the default branch's first-parent line (the "trunk"), so
-// they can be drawn in the reserved green. Walks from the tip of the default
-// branch (origin's and the local one, so unpushed local commits count too).
-function markDefaultBranch(rows, shaToIndex) {
+// The default branch's first-parent line (the "trunk"): walks from the tip of the
+// default branch (origin's and the local one, so unpushed local commits count
+// too). The uncommitted-changes row joins it when it sits on the trunk's tip.
+function findTrunk(commits, shaToIndex) {
+  const trunk = new Set();
   const shas = state.branchShas || {};
   const names = [...new Set([state.defaultBranch, 'main', 'master'].filter(Boolean))];
   const name = names.find(n => shas['remotes/origin/' + n] || shas[n]);
-  if (!name) return;
+  if (!name) return trunk;
   for (const tip of [shas['remotes/origin/' + name], shas[name]]) {
     let i = tip ? shaToIndex.get(tip) : undefined;
-    while (i !== undefined && !rows[i].isMain) {
-      rows[i].isMain = true;
-      const parent = rows[i].commit.parents[0];
+    while (i !== undefined && !trunk.has(commits[i].sha)) {
+      trunk.add(commits[i].sha);
+      const parent = commits[i].parents[0];
       i = parent ? shaToIndex.get(parent) : undefined;
     }
   }
+  for (const c of commits) if (c.isWip && c.parents[0] && trunk.has(c.parents[0])) trunk.add(c.sha);
+  return trunk;
 }
 
 // ─── Render Commit Rows (DOM) ─────────────────────────────────────────────────
