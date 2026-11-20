@@ -38,6 +38,8 @@ contextBridge.exposeInMainWorld('gitApp', {
   rebaseOnto:  (repoPath, branch) => ipcRenderer.invoke('git:rebaseOnto', { repoPath, branch }),
   setIcon: (dataUrl) => ipcRenderer.invoke('window:setIcon', { dataUrl }),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', { url }),
+  openExplorer: (repoPath) => ipcRenderer.invoke('shell:openExplorer', { repoPath }),
+  openTerminal: (repoPath) => ipcRenderer.invoke('shell:openTerminal', { repoPath }),
   openInVscode: (repoPath) => ipcRenderer.invoke('shell:openInVscode', { repoPath }),
   fetch: (repoPath) => ipcRenderer.invoke('git:fetch', { repoPath }),
   projectIcon: (repoPath) => ipcRenderer.invoke('repo:projectIcon', { repoPath }),

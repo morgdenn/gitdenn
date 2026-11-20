@@ -129,11 +129,18 @@ function bindEvents() {
   $('stash-confirm').addEventListener('click', doStashPush);
   $('stash-message').addEventListener('keydown', e => { if (e.key === 'Enter') doStashPush(); });
   on('stash-list', 'click', '[data-op]', el => doStashOp(el.dataset.op, +el.dataset.index));
-  $('btn-github').addEventListener('click', () => {
-    if (state.githubUrl) window.gitApp.openExternal(state.githubUrl);
+  $('btn-open-with').addEventListener('click', e => {
+    e.stopPropagation();
+    const menu = $('open-with-menu');
+    menu.hidden = !menu.hidden;
   });
-  $('btn-vscode').addEventListener('click', () => {
-    if (state.repoPath) window.gitApp.openInVscode(state.repoPath);
+  on('open-with-menu', 'click', '[data-open]', el => {
+    $('open-with-menu').hidden = true;
+    openRepoWith(el.dataset.open);
+  });
+  document.addEventListener('click', e => {
+    const menu = $('open-with-menu');
+    if (menu && !menu.hidden && !e.target.closest('.open-with')) menu.hidden = true;
   });
   $('branch-cancel').addEventListener('click', hideBranchModal);
   $('branch-cancel-2').addEventListener('click', hideBranchModal);
@@ -162,7 +169,7 @@ function bindEvents() {
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); hideRebaseModal(); hideSquashModal(); hideStashModal(); closeFileDiff(); hideBranchCtxMenu(); hideCommitCtxMenu(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
+    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); hideRebaseModal(); hideSquashModal(); hideStashModal(); closeFileDiff(); { const m = $('open-with-menu'); if (m) m.hidden = true; } hideBranchCtxMenu(); hideCommitCtxMenu(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'r') loadRepo(state.repoPath);
     // Ctrl/Cmd+Shift+E → open the repo in VS Code
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'e' || e.key === 'E')) {
@@ -2436,7 +2443,17 @@ function githubWebUrl(remoteUrl) {
 function updateRepoLinks() {
   const url = githubWebUrl(state.remoteUrl);
   state.githubUrl = url;
-  $('btn-github').style.display = url ? '' : 'none';
+  $('open-with-github').style.display = url ? '' : 'none';
+}
+
+async function openRepoWith(target) {
+  if (!state.repoPath) return;
+  let res = { success: true };
+  if (target === 'github') { if (state.githubUrl) res = await window.gitApp.openExternal(state.githubUrl); }
+  else if (target === 'vscode') res = await window.gitApp.openInVscode(state.repoPath);
+  else if (target === 'explorer') res = await window.gitApp.openExplorer(state.repoPath);
+  else if (target === 'terminal') res = await window.gitApp.openTerminal(state.repoPath);
+  if (res && !res.success) showToast(`Couldn't open: ${res.error}`);
 }
 
 async function doPull() {

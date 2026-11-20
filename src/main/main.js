@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell, nativeImage } = require('ele
 const path = require('path');
 const simpleGit = require('simple-git');
 const fs = require('fs');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 
 let mainWindow;
 
@@ -781,6 +781,39 @@ ipcMain.handle('shell:openInVscode', async (event, { repoPath }) => {
         .catch(e => resolve({ success: false, error: e.message }));
     });
   });
+});
+
+// Show the repo folder in the OS file manager (Explorer / Finder / ...).
+ipcMain.handle('shell:openExplorer', async (event, { repoPath }) => {
+  const err = await shell.openPath(repoPath);
+  return err ? { success: false, error: err } : { success: true };
+});
+
+// Open a terminal with the repo as its working directory. No shell string is
+// built from the path: it is passed as cwd / an argument only.
+ipcMain.handle('shell:openTerminal', async (event, { repoPath }) => {
+  const launch = (cmd, args) => new Promise(resolve => {
+    let done = false;
+    const finish = r => { if (!done) { done = true; resolve(r); } };
+    try {
+      const child = spawn(cmd, args, { cwd: repoPath, detached: true, stdio: 'ignore' });
+      child.on('error', e => finish({ success: false, error: e.message }));
+      child.unref();
+      setTimeout(() => finish({ success: true }), 400); // no spawn error by now → started
+    } catch (e) { finish({ success: false, error: e.message }); }
+  });
+  if (process.platform === 'win32') {
+    // Windows Terminal if installed, otherwise a plain cmd window.
+    const wt = await launch('wt.exe', ['-d', repoPath]);
+    if (wt.success) return wt;
+    return launch('cmd.exe', ['/c', 'start', '', 'cmd.exe']);
+  }
+  if (process.platform === 'darwin') return launch('open', ['-a', 'Terminal', repoPath]);
+  for (const t of ['x-terminal-emulator', 'gnome-terminal', 'konsole', 'xterm']) {
+    const r = await launch(t, []);
+    if (r.success) return r;
+  }
+  return { success: false, error: 'No terminal emulator found.' };
 });
 
 // Rename a local branch (git branch -m <old> <new>)

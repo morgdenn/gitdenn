@@ -1403,3 +1403,7 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 /* Uncommitted changes have no SHA or refs: don't draw an empty badge / row */
 #detail-sha:empty { display: none; }
 #detail-sha-row:has(#detail-sha:empty):has(#detail-refs:empty) { display: none; }
+
+/* Open With dropdown (toolbar, top right) */
+.open-with { position: relative; }
+.open-with-menu { z-index: 200; min-width: 160px; }
