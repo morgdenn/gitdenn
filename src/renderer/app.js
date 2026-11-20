@@ -31,12 +31,17 @@ const LANE_PAD = 14;   // left padding before first lane
 const NODE_FONT = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
 
 // Branch lane colours (cycling) — Monokai palette, no purple
+// The app's theme green is reserved for the repo's default branch (main/master)
+// and is deliberately absent from the palette used for every other branch.
+const MAIN_COLOR = '#a6e22e';
 const LANE_COLORS = [
-  '#a6e22e', '#66d9ef', '#f92672', '#fd971f',
-  '#e6db74', '#a1efe4', '#f45b8f', '#b8e673',
-  '#78dce8', '#ffa94d', '#d1d648', '#7bd88f',
+  '#66d9ef', '#f92672', '#fd971f', '#e6db74',
+  '#a1efe4', '#f45b8f', '#78dce8', '#ffa94d',
+  '#c792ea', '#ff8b7b',
 ];
 const laneColor = lane => LANE_COLORS[lane % LANE_COLORS.length];
+// Colour for a graph row: the default branch's commits are green, others by lane.
+const rowColor = row => row.isMain ? MAIN_COLOR : laneColor(row.lane);
 
 // Author initials for avatar nodes: "Ian Anderson" → "IA", "Kevin" → "K".
 function authorInitials(name) {
@@ -1404,10 +1409,29 @@ function computeGraphLayout(commits) {
     }
 
     const maxLane = Math.max(lane, ...connections.map(c => Math.max(c.fromLane, c.toLane)), 0);
-    rows.push({ commit, lane, connections, maxLane });
+    rows.push({ commit, lane, connections, maxLane, isMain: false });
   }
 
+  markDefaultBranch(rows, shaToIndex);
   return rows;
+}
+
+// Flag the commits on the default branch's first-parent line (the "trunk"), so
+// they can be drawn in the reserved green. Walks from the tip of the default
+// branch (origin's and the local one, so unpushed local commits count too).
+function markDefaultBranch(rows, shaToIndex) {
+  const shas = state.branchShas || {};
+  const names = [...new Set([state.defaultBranch, 'main', 'master'].filter(Boolean))];
+  const name = names.find(n => shas['remotes/origin/' + n] || shas[n]);
+  if (!name) return;
+  for (const tip of [shas['remotes/origin/' + name], shas[name]]) {
+    let i = tip ? shaToIndex.get(tip) : undefined;
+    while (i !== undefined && !rows[i].isMain) {
+      rows[i].isMain = true;
+      const parent = rows[i].commit.parents[0];
+      i = parent ? shaToIndex.get(parent) : undefined;
+    }
+  }
 }
 
 // ─── Render Commit Rows (DOM) ─────────────────────────────────────────────────
@@ -1434,7 +1458,7 @@ function renderCommitRows(graphData) {
     const tagRefs    = commit.refs.filter(r =>  r.startsWith('tag: '));
     // Tint the graph cell to the right of this commit's graph line only.
     const lineX = LANE_PAD + row.lane * COL_W + COL_W / 2;
-    const tint = raw(` style="--lane-tint: color-mix(in srgb, ${laneColor(row.lane)} 12%, transparent); --line-x: ${lineX}px"`);
+    const tint = raw(` style="--lane-tint: color-mix(in srgb, ${rowColor(row)} 12%, transparent); --line-x: ${lineX}px"`);
     if (commit.isWip) {
       return html`
         <div class="commit-row wip ${selected}" data-sha="${commit.sha}" data-idx="${i}"${tint}>
@@ -1450,7 +1474,7 @@ function renderCommitRows(graphData) {
     }
     return html`
       <div class="commit-row ${selected}" data-sha="${commit.sha}" data-idx="${i}"${tint}>
-        <div class="commit-branch">${raw(buildRefBadges(branchRefs, laneColor(row.lane), remoteNames))}</div>
+        <div class="commit-branch">${raw(buildRefBadges(branchRefs, rowColor(row), remoteNames))}</div>
         <div class="commit-graph-cell"></div>
         <div class="commit-msg">
           <span class="msg-text">${commit.subject}</span>
@@ -1582,7 +1606,9 @@ function paintGraph(graphData) {
 
       ctx.beginPath();
       // Colour the line after the lane it mostly runs in.
-      ctx.strokeStyle = color(first ? fromLane : toLane);
+      // The default branch's own first-parent line is the reserved green.
+      const trunk = first && row.isMain && graphData[parentRow].isMain;
+      ctx.strokeStyle = trunk ? MAIN_COLOR : color(first ? fromLane : toLane);
       ctx.lineWidth = 2;
       ctx.moveTo(x1, y1);
 
@@ -1613,7 +1639,7 @@ function paintGraph(graphData) {
     const row = graphData[i];
     const x = laneX(row.lane);
     const y = rowY(i);
-    const c = color(row.lane);
+    const c = rowColor(row);
 
     // WIP (uncommitted changes) node: hollow dashed ring, no initials
     if (row.commit.isWip) {

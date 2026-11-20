@@ -40,6 +40,7 @@
 - **Reopens your most recent repo on startup** (quietly falls back to the welcome screen if it has moved or been deleted)
 - **Repos list** can be sorted A–Z or by most recent with the small button in its header (remembered)
 - **Local branches show whether they are on origin**: a muted cloud when the branch also exists on origin, an amber dashed struck-through cloud when it is local only
+- **Graph: the theme green is reserved for the default branch** (main/master first-parent line, incl. unpushed local commits); all other branches use a palette without green
 - **Open With** dropdown in the toolbar replaces the GitHub / VS Code buttons: GitHub, VS Code, Explorer (Finder on macOS) or Terminal (Windows Terminal if installed, Terminal.app on macOS)
 - **Fast commit push** button pinned to the bottom of the right panel (away from Commit): stages all changes, generates a message, commits and pushes in one click
 - Right-click a local branch to **Pull branch** (fast-forwards it even if it isn't checked out), copy its name, rename, or delete
