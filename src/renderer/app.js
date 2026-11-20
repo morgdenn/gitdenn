@@ -1593,11 +1593,16 @@ function paintGraph(graphData) {
   // parent (below), so a long line whose child is scrolled out of view above must
   // still be drawn through the visible area. Edges that end above the viewport
   // (parent before firstRow) are skipped.
+  // Two passes: every other branch's lines first, then the default branch's green
+  // trunk last, so the trunk is always on top and other lines (e.g. a merge line
+  // running down the trunk's lane) only show where they leave it.
+  for (const trunkPass of [false, true])
   for (let i = 0; i <= lastRow; i++) {
     const row = graphData[i];
     row.connections.forEach(({ fromLane, toLane, parentSha, first }) => {
       const parentRow = shaToIndex.has(parentSha) ? shaToIndex.get(parentSha) : -1;
       if (parentRow < 0 || parentRow < firstRow) return;
+      if ((first && row.isMain && graphData[parentRow].isMain) !== trunkPass) return;
 
       const x1 = laneX(fromLane);
       const y1 = rowY(i);
