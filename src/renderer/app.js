@@ -66,6 +66,11 @@ window.addEventListener('DOMContentLoaded', () => {
   bindEvents();
   setAppIcon();
   nameOpenWithItems();
+  // Hide the commit-details panel while no commit is selected: its content is
+  // hidden exactly then (many code paths toggle it), so watch that and mirror it.
+  const syncDetailPanel = () => document.body.classList.toggle('no-detail', detailContent.style.display === 'none');
+  new MutationObserver(syncDetailPanel).observe(detailContent, { attributes: true, attributeFilter: ['style'] });
+  syncDetailPanel();
   // Reopen the most recently used repo (the list is most-recent-first).
   const last = state.recentRepos[0];
   if (last && last.path) loadRepo(last.path, { silent: true });

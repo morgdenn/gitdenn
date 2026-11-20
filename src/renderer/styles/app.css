@@ -1412,3 +1412,6 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 .origin-icon { flex-shrink: 0; }
 .origin-icon.on { color: var(--text-muted); opacity: 0.7; }
 .origin-icon.off { color: var(--amber, #e6db74); }
+
+/* No commit selected → no details panel (the graph takes the full width) */
+body.no-detail #detail-panel, body.no-detail #detail-resizer { display: none; }
