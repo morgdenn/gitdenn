@@ -1565,11 +1565,15 @@ function paintGraph(graphData) {
   // Draw edges — orthogonal (right-angle) routing with rounded corners.
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  for (let i = firstRow; i <= lastRow; i++) {
+  // Start from row 0, not firstRow: an edge runs from a child (above) down to its
+  // parent (below), so a long line whose child is scrolled out of view above must
+  // still be drawn through the visible area. Edges that end above the viewport
+  // (parent before firstRow) are skipped.
+  for (let i = 0; i <= lastRow; i++) {
     const row = graphData[i];
     row.connections.forEach(({ fromLane, toLane, parentSha, first }) => {
       const parentRow = shaToIndex.has(parentSha) ? shaToIndex.get(parentSha) : -1;
-      if (parentRow < 0) return;
+      if (parentRow < 0 || parentRow < firstRow) return;
 
       const x1 = laneX(fromLane);
       const y1 = rowY(i);
