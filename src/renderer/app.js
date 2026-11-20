@@ -253,6 +253,9 @@ function bindEvents() {
   $('squash-cancel-2').addEventListener('click', hideSquashModal);
   $('squash-confirm').addEventListener('click', doSquash);
 
+  // Double-click a branch label in the graph → check that branch out
+  on(commitRows, 'dblclick', '.ref-badge[data-checkout]', el => checkoutFromGraph(el.dataset.checkout, el.dataset.ref));
+
   // Double-click a remote branch → check it out as a local tracking branch
   on('remote-branches-list', 'dblclick', '.branch-remote', el => checkoutRemoteBranch(el.dataset.branch));
 
@@ -1260,6 +1263,16 @@ async function checkoutLocalBranch(branch) {
   showToast(`Switched to ${branch}`);
 }
 
+// A branch label in the graph was double-clicked. Remote labels check out the
+// matching local branch if there is one, otherwise create a tracking branch.
+function checkoutFromGraph(kind, ref) {
+  if (!ref) return;
+  if (kind === 'local') return checkoutLocalBranch(ref);
+  const short = ref.replace(/^remotes\/[^/]+\//, '');
+  if ((state.branches || []).includes(short)) return checkoutLocalBranch(short);
+  return checkoutRemoteBranch(ref);
+}
+
 let _ctxBranch = null;
 
 function showBranchCtxMenu(x, y, branch, { isCurrent, isRemote }) {
@@ -1590,6 +1603,7 @@ function buildRefBadges(refs, color, remoteNames) {
   const remotes = remoteNames || new Set();
   return refs.map(ref => {
     let cls, label;
+    let attrs = '', hint = ''; // double-click to check out (branches only)
     if (ref === 'HEAD') { cls = 'ref-head'; label = 'HEAD'; }
     else if (ref.startsWith('HEAD -> ')) { cls = 'ref-head'; label = ref.slice(8); }
     else if (ref.startsWith('tag: ')) { cls = 'ref-tag'; label = ref.slice(5); }
@@ -1599,14 +1613,18 @@ function buildRefBadges(refs, color, remoteNames) {
         label = ref.slice(remote.length + 1); // strip "origin/"
         if (label === 'HEAD' || label === '') return ''; // skip "origin/HEAD"
         cls = 'ref-remote';
+        attrs = ` data-checkout="remote" data-ref="${escHtml('remotes/' + ref)}"`;
+        hint = ' (double-click to check out)';
       } else {
         cls = 'ref-branch'; label = ref;
+        attrs = ` data-checkout="local" data-ref="${escHtml(ref)}"`;
+        hint = ' (double-click to check out)';
       }
     }
     const st = cls === 'ref-tag' ? '' : style; // tags keep their own colour
     const safe = escHtml(label);
     // title shows the full name on hover (badge text may be ellipsised in CSS)
-    return `<span class="ref-badge ${cls}"${st} title="${safe}">${safe}</span>`;
+    return `<span class="ref-badge ${cls}"${st}${attrs} title="${safe}${hint}">${safe}</span>`;
   }).join('');
 }
 

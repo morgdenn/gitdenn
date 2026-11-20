@@ -1415,3 +1415,6 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 
 /* No commit selected → no details panel (the graph takes the full width) */
 body.no-detail #detail-panel, body.no-detail #detail-resizer { display: none; }
+
+/* Branch labels in the graph can be double-clicked to check the branch out */
+.ref-badge[data-checkout] { cursor: pointer; user-select: none; }
