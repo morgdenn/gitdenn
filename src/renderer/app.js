@@ -1809,12 +1809,37 @@ function showCommitCtxMenu(x, y) {
   btn.disabled = n < 2;
   btn.title = n < 2 ? 'Ctrl-click or Shift-click to select two or more commits first' : '';
   btn.onclick = () => { hideCommitCtxMenu(); showSquashModal(); };
+  const cp = $('ctx-cherry-pick');
+  const picks = cherryPickShas();
+  cp.textContent = picks.length > 1 ? `Cherry-pick ${picks.length} commits` : 'Cherry-pick commit';
+  cp.onclick = () => { hideCommitCtxMenu(); doCherryPick(picks); };
   const menu = $('commit-ctx-menu');
   menu.style.display = 'block';
   const vw = window.innerWidth, vh = window.innerHeight;
   menu.style.left = (x + 180 > vw ? vw - 184 : x) + 'px';
-  menu.style.top  = (y + 40 > vh ? vh - 44 : y) + 'px';
+  menu.style.top  = (y + 76 > vh ? vh - 80 : y) + 'px';
 }
+// The commits a cherry-pick applies: the multi-selection, else the selected one,
+// oldest first (the commit list is newest-first).
+function cherryPickShas() {
+  const multi = (state.multiSel || []).filter(s => s !== '__WIP__');
+  const shas = multi.length ? multi : (state.selectedSha && state.selectedSha !== '__WIP__' ? [state.selectedSha] : []);
+  const order = state.commits.map(c => c.sha);
+  return [...shas].sort((a, b) => order.indexOf(b) - order.indexOf(a));
+}
+
+async function doCherryPick(shas) {
+  if (!state.repoPath || !shas.length) return;
+  const overlay = showLoading(`Cherry-picking onto ${state.currentBranch || 'HEAD'}…`);
+  const res = await window.gitApp.cherryPick(state.repoPath, shas);
+  overlay.remove();
+  if (!res.success) { alert(`Cherry-pick failed: ${res.error}`); return; }
+  state.multiSel = [];
+  resetDetailPanel();
+  await loadRepo(state.repoPath);
+  showToast(`Cherry-picked ${shas.length} commit${shas.length === 1 ? '' : 's'} onto ${state.currentBranch || 'HEAD'}`);
+}
+
 function hideCommitCtxMenu() {
   const m = $('commit-ctx-menu');
   if (m) m.style.display = 'none';

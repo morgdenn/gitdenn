@@ -704,6 +704,39 @@ ipcMain.handle('git:commitAmend', async (event, { repoPath, message }) => {
 // squashed commit reuses the newest selected commit's tree (so the result is
 // identical content), is parented on the oldest's parent, and any newer commits
 // are replayed on top of it (conflict-free, since the trees match).
+// Cherry-pick commits (oldest first) onto the current branch. GitDenn has no
+// conflict-resolution screen, so if anything goes wrong the whole pick is aborted
+// and the branch is left exactly as it was.
+ipcMain.handle('git:cherryPick', async (event, { repoPath, shas }) => {
+  const git = simpleGit(repoPath);
+  try {
+    if (!Array.isArray(shas) || !shas.length || !shas.every(s => /^[0-9a-f]{7,40}$/i.test(s))) {
+      throw new Error('No commits to cherry-pick.');
+    }
+    const args = ['cherry-pick'];
+    const parents = async sha => (await git.raw(['rev-list', '--parents', '-n', '1', sha])).trim().split(' ').length - 1;
+    const merges = [];
+    for (const s of shas) if (await parents(s) > 1) merges.push(s);
+    if (merges.length) {
+      if (shas.length > 1) throw new Error('Merge commits can only be cherry-picked on their own (select just the merge commit).');
+      args.push('-m', '1'); // replay the merge relative to its first parent
+    }
+    await git.raw([...args, ...shas]);
+    return { success: true };
+  } catch (err) {
+    let msg = String(err && err.message || err);
+    try { await git.raw(['cherry-pick', '--abort']); } catch (e) { /* nothing in progress */ }
+    if (/conflict/i.test(msg)) {
+      msg = 'The changes conflict with the current branch, so the cherry-pick was cancelled and nothing was changed.';
+    } else if (/would be overwritten|local changes/i.test(msg)) {
+      msg = 'You have uncommitted changes to files this commit touches. Commit or stash them first.';
+    } else if (/empty/i.test(msg)) {
+      msg = "Nothing to apply: this commit's changes are already in the current branch.";
+    }
+    return { success: false, error: msg };
+  }
+});
+
 ipcMain.handle('git:squash', async (event, { repoPath, shas, message }) => {
   const git = simpleGit(repoPath);
   let rebasing = false;

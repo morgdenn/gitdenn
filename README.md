@@ -44,6 +44,7 @@
 - **Open With** dropdown in the toolbar replaces the GitHub / VS Code buttons: GitHub, VS Code, Explorer (Finder on macOS) or Terminal (Windows Terminal if installed, Terminal.app on macOS)
 - **The commit details panel hides** while no commit is selected, giving the graph the full width
 - **Double-click a branch label in the graph to check it out** (a remote label switches to the matching local branch, or creates a tracking branch)
+- **Cherry-pick** from the commit right-click menu: applies the selected commit(s), oldest first, onto the current branch; on conflict it cancels cleanly and changes nothing
 - **Fast commit push** button pinned to the bottom of the right panel (away from Commit): stages all changes, generates a message, commits and pushes in one click
 - Right-click a local branch to **Pull branch** (fast-forwards it even if it isn't checked out), copy its name, rename, or delete
 - Double-click a remote branch to check it out locally; double-click a local branch to switch

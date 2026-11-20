@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('gitApp', {
   unstageAll: (repoPath) => ipcRenderer.invoke('git:unstageAll', { repoPath }),
   commit:      (repoPath, message) => ipcRenderer.invoke('git:commit',      { repoPath, message }),
   commitAmend: (repoPath, message) => ipcRenderer.invoke('git:commitAmend', { repoPath, message }),
+  cherryPick: (repoPath, shas) => ipcRenderer.invoke('git:cherryPick', { repoPath, shas }),
   squash: (repoPath, shas, message) => ipcRenderer.invoke('git:squash', { repoPath, shas, message }),
   commitMessage:(repoPath, sha) => ipcRenderer.invoke('git:commitMessage', { repoPath, sha }),
   suggestCommit: (repoPath, sha) => ipcRenderer.invoke('git:suggestCommit', { repoPath, sha }),
