@@ -1064,8 +1064,15 @@ function renderBranches() {
     path: b.replace('remotes/', ''), value: b, current: false, ...staleInfo(b),
   }));
 
+  // Which local branches also exist on origin (falls back to any remote when the
+  // repo has no remote called "origin").
+  const hasOrigin = remotes.some(b => b.startsWith('remotes/origin/'));
+  const onRemote = new Set(remotes
+    .filter(b => !hasOrigin || b.startsWith('remotes/origin/'))
+    .map(b => b.split('/').slice(2).join('/')));
+
   render('local-branches-list', locals.length
-    ? renderBranchTree(buildBranchTree(localItems), { remote: false, hideStale })
+    ? renderBranchTree(buildBranchTree(localItems), { remote: false, hideStale, onRemote, remoteName: hasOrigin ? 'origin' : 'the remote' })
     : html`<div class="empty-sidebar">No local branches</div>`);
 
   render('remote-branches-list', remotes.length
@@ -1108,6 +1115,14 @@ const ICON_FOLDER = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" heigh
 const ICON_FILE = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true">
   <path d="M3 2h6.2L13 5.8V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
   <path d="M9 2v4h4" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+</svg>`;
+// Local branch on / not on the remote: a cloud, dashed and struck through when local-only.
+const ICON_ON_ORIGIN = `<svg class="origin-icon on" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true">
+  <path d="M4.5 12.2h6.8a2.7 2.7 0 0 0 .4-5.4A3.9 3.9 0 0 0 4.2 7.5a2.35 2.35 0 0 0 .3 4.7z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+</svg>`;
+const ICON_LOCAL_ONLY = `<svg class="origin-icon off" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true">
+  <path d="M4.5 12.2h6.8a2.7 2.7 0 0 0 .4-5.4A3.9 3.9 0 0 0 4.2 7.5a2.35 2.35 0 0 0 .3 4.7z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" stroke-dasharray="2 1.6"/>
+  <path d="M2.5 2.5l11 11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
 </svg>`;
 const ICON_CHECK = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
   <rect x="1.5" y="1.5" width="13" height="13" rx="3.5" style="fill:var(--green)"/>
@@ -1160,6 +1175,7 @@ function renderBranchTree(node, opts, depth = 0) {
       const tip = [
         it.stale ? `Stale — last commit ${new Date(it.lastCommit * 1000).toLocaleDateString()} (${relativeDate(it.lastCommit)})` : '',
         opts.remote ? 'Double-click to check out locally' : '',
+        !opts.remote && opts.onRemote ? (opts.onRemote.has(it.value) ? `Also on ${opts.remoteName}` : `Local only — not pushed to ${opts.remoteName}`) : '',
       ].filter(Boolean).join('\n');
       const title = tip ? raw(` title="${escHtml(tip)}"`) : '';
       const track = opts.remote ? null : (state.tracking || {})[it.value];
@@ -1173,6 +1189,7 @@ function renderBranchTree(node, opts, depth = 0) {
           ${raw(it.current ? ICON_CHECK : ICON_BRANCH)}
           <span class="branch-name">${label}</span>
           ${ab}
+          ${!opts.remote && opts.onRemote ? raw(opts.onRemote.has(it.value) ? ICON_ON_ORIGIN : ICON_LOCAL_ONLY) : ''}
         </div>`;
     }
     // Local folders open by default; remote folders stay folded except the

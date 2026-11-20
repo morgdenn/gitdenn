@@ -1407,3 +1407,8 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 /* Open With dropdown (toolbar, top right) */
 .open-with { position: relative; }
 .open-with-menu { z-index: 200; min-width: 160px; }
+
+/* Local branch on origin (solid cloud, muted) vs local only (dashed, struck-through, amber) */
+.origin-icon { flex-shrink: 0; }
+.origin-icon.on { color: var(--text-muted); opacity: 0.7; }
+.origin-icon.off { color: var(--amber, #e6db74); }
