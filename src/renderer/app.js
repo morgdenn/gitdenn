@@ -2296,8 +2296,8 @@ async function renderWipDetail() {
         <div class="wd-head">
           <span>Changes (${unstaged.length})</span>
           <span class="wd-head-actions">
-            ${fileViewToggle(mode)}
             ${unstaged.length ? html`<button class="wd-bulk" data-act="stage-all">Stage all</button>` : ''}
+            ${fileViewToggle(mode)}
           </span>
         </div>
         ${unstaged.length ? fileRows(unstaged, 'unstaged') : html`<div class="wd-empty">No changes</div>`}
@@ -2306,8 +2306,8 @@ async function renderWipDetail() {
         <div class="wd-head">
           <span>Staged (${staged.length})</span>
           <span class="wd-head-actions">
-            ${fileViewToggle(mode)}
             ${staged.length ? html`<button class="wd-bulk" data-act="unstage-all">Unstage all</button>` : ''}
+            ${fileViewToggle(mode)}
           </span>
         </div>
         ${staged.length ? fileRows(staged, 'staged') : html`<div class="wd-empty">Nothing staged</div>`}
