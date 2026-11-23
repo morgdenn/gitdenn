@@ -1432,3 +1432,17 @@ body.no-detail #detail-panel, body.no-detail #detail-resizer { display: none; }
 /* In tree view the row shows just the file name: read it left-to-right */
 .wd-path.in-tree { direction: ltr; }
 .wd-tree .diff-tree-children { padding-left: 12px; }
+
+/* Folder rows in the file trees: show a chevron so it's clear they expand/collapse */
+.diff-folder-label::before {
+  content: "";
+  flex-shrink: 0;
+  width: 0; height: 0;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  margin-right: 1px;
+  transition: transform 0.12s;
+}
+.diff-folder[open] > .diff-folder-label::before { transform: rotate(90deg); }
+.diff-folder-label:hover { color: var(--text-pri); }
