@@ -2565,10 +2565,12 @@ function fileTreeHtml(items, scope, leaf) {
     });
     return keys.map(key => {
       let child = node.children[key], name = key;
-      while (!child.item && Object.keys(child.children).length === 1) {
-        const k = Object.keys(child.children)[0];
-        name += '/' + k;
-        child = child.children[k];
+      // Merge "a/b/c" chains of folders that contain only one folder; stop at a file.
+      for (;;) {
+        const ks = Object.keys(child.children);
+        if (child.item || ks.length !== 1 || child.children[ks[0]].item) break;
+        name += '/' + ks[0];
+        child = child.children[ks[0]];
       }
       const path = prefix ? `${prefix}/${name}` : name;
       if (child.item) return leaf(child.item, name);
