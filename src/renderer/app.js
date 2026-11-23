@@ -297,6 +297,13 @@ function bindEvents() {
     };
     showFileDiff();
   });
+  // Remember which folders are collapsed in the file trees. `toggle` does not
+  // bubble, so listen in the capture phase.
+  $('detail-diff').addEventListener('toggle', e => {
+    const d = e.target;
+    if (!d || !d.matches || !d.matches('details[data-key]')) return;
+    if (d.open) closedDirs.delete(d.dataset.key); else closedDirs.add(d.dataset.key);
+  }, true);
   $('dv-discard').addEventListener('click', discardViewedFile);
   $('detail-diff').addEventListener('input', e => {
     if (e.target.id === 'commit-msg-input') state.commitMsg = e.target.value;
@@ -2264,34 +2271,46 @@ async function renderWipDetail() {
     const v = state.fileDiff;
     return !!(v && v.wip && v.file === f.path && v.staged === (kind === 'staged'));
   };
-  const fileRow = (f, kind) => {
+  const mode = fileViewMode('list');
+  const fileRow = (f, kind, name) => {
     const label = statusLabel(kind === 'staged' ? f.index : f.working_dir, f.untracked && kind !== 'staged');
     const act = kind === 'staged' ? 'unstage' : 'stage';
     return html`
       <div class="wd-file${isViewed(f, kind) ? ' active' : ''}" data-path="${f.path}" data-staged="${kind === 'staged' ? 'true' : 'false'}" data-untracked="${f.untracked ? 'true' : 'false'}">
         <span class="wd-status wd-${label.cls}">${label.ch}</span>
-        <span class="wd-path" title="${f.path}">${f.path}</span>
+        <span class="wd-path${name ? ' in-tree' : ''}" title="${f.path}">${name || f.path}</span>
         <button class="wd-act" data-act="${act}" data-path="${f.path}" title="${act}">
           ${act === 'stage' ? '+' : '−'}
         </button>
       </div>`;
   };
 
+  // List mode: flat rows with the full path. Tree mode: folders, file names only.
+  const fileRows = (list, kind) => mode === 'tree'
+    ? html`<div class="wd-tree">${fileTreeHtml(list, kind === 'staged' ? 's' : 'u', (f, name) => fileRow(f, kind, name))}</div>`
+    : list.map(f => fileRow(f, kind));
+
   render('detail-diff', html`
     <div class="wd">
       <div class="wd-section">
         <div class="wd-head">
           <span>Changes (${unstaged.length})</span>
-          ${unstaged.length ? html`<button class="wd-bulk" data-act="stage-all">Stage all</button>` : ''}
+          <span class="wd-head-actions">
+            ${fileViewToggle(mode)}
+            ${unstaged.length ? html`<button class="wd-bulk" data-act="stage-all">Stage all</button>` : ''}
+          </span>
         </div>
-        ${unstaged.length ? unstaged.map(f => fileRow(f, 'unstaged')) : html`<div class="wd-empty">No changes</div>`}
+        ${unstaged.length ? fileRows(unstaged, 'unstaged') : html`<div class="wd-empty">No changes</div>`}
       </div>
       <div class="wd-section">
         <div class="wd-head">
           <span>Staged (${staged.length})</span>
-          ${staged.length ? html`<button class="wd-bulk" data-act="unstage-all">Unstage all</button>` : ''}
+          <span class="wd-head-actions">
+            ${fileViewToggle(mode)}
+            ${staged.length ? html`<button class="wd-bulk" data-act="unstage-all">Unstage all</button>` : ''}
+          </span>
         </div>
-        ${staged.length ? staged.map(f => fileRow(f, 'staged')) : html`<div class="wd-empty">Nothing staged</div>`}
+        ${staged.length ? fileRows(staged, 'staged') : html`<div class="wd-empty">Nothing staged</div>`}
       </div>
       <div class="wd-commit">
         <div class="wd-commit-head">
@@ -2327,6 +2346,7 @@ async function refreshStatus() {
 
 async function handleWipAction(act, path) {
   if (!state.repoPath) return;
+  if (act === 'toggle-file-view') return switchFileView(path); // `path` carries the current mode
   if (act === 'commit') return doCommit();
   if (act === 'amend')  return doAmend();
   if (act === 'suggest') return generateCommitMessage();
@@ -2493,6 +2513,76 @@ async function discardViewedFile() {
   await refreshWorkingState(); // change count dropped → update graph WIP node too
 }
 
+// ─── File list: list view / tree view ─────────────────────────────────────────
+// One preference ("fileView") shared by a commit's files and the uncommitted
+// changes. Until the user picks one, each view keeps its original look
+// (commit files: tree, uncommitted changes: list).
+function fileViewMode(legacyDefault) {
+  try {
+    const v = localStorage.getItem('fileView');
+    if (v === 'list' || v === 'tree') return v;
+  } catch (e) { /* storage unavailable */ }
+  return legacyDefault;
+}
+const ICON_VIEW_LIST = `<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2 3.5h10M2 7h10M2 10.5h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+const ICON_VIEW_TREE = `<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2 3h6M4.5 6h6M4.5 9h6M7 12h5M2.5 3.5v5.5M2.5 6h2M2.5 9h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>`;
+// The button shows the view you would switch TO. Its data-path carries the
+// current mode so the click handler knows which way to flip.
+function fileViewToggle(mode) {
+  const next = mode === 'tree' ? 'list' : 'tree';
+  return html`<button class="wd-bulk view-toggle" data-act="toggle-file-view" data-path="${mode}" title="Switch to ${next} view" aria-label="Switch to ${next} view">${raw(next === 'list' ? ICON_VIEW_LIST : ICON_VIEW_TREE)}</button>`;
+}
+async function switchFileView(currentMode) {
+  try { localStorage.setItem('fileView', currentMode === 'tree' ? 'list' : 'tree'); } catch (e) { /* ignore */ }
+  if (state.selectedSha === '__WIP__') await renderWipDetail();
+  else if (state.lastDiff) renderDiff(state.lastDiff.stat, state.lastDiff.fileInfo);
+}
+
+// Folders the user has collapsed in a file tree (kept across redraws; the
+// uncommitted-changes list redraws every couple of seconds).
+const closedDirs = new Set();
+
+// Render items ({path, ...}) as a folder tree. `scope` namespaces the collapsed
+// state; leaf(item, displayName) renders one file. Folders come first, and chains
+// of single-child folders are shown as one "a/b/c" row.
+function fileTreeHtml(items, scope, leaf) {
+  const makeNode = () => ({ children: {}, item: null });
+  const root = makeNode();
+  for (const it of items) {
+    let node = root;
+    const parts = it.path.replace(/\\/g, '/').split('/');
+    parts.forEach((part, i) => {
+      if (!node.children[part]) node.children[part] = makeNode();
+      node = node.children[part];
+      if (i === parts.length - 1) node.item = it;
+    });
+  }
+  const draw = (node, prefix) => {
+    const keys = Object.keys(node.children).sort((a, b) => {
+      const af = !!node.children[a].item, bf = !!node.children[b].item;
+      if (af !== bf) return af ? 1 : -1; // folders first
+      return a.localeCompare(b);
+    });
+    return keys.map(key => {
+      let child = node.children[key], name = key;
+      while (!child.item && Object.keys(child.children).length === 1) {
+        const k = Object.keys(child.children)[0];
+        name += '/' + k;
+        child = child.children[k];
+      }
+      const path = prefix ? `${prefix}/${name}` : name;
+      if (child.item) return leaf(child.item, name);
+      const dirKey = `${scope}:${path}`;
+      return html`
+        <details class="diff-folder" data-key="${dirKey}"${closedDirs.has(dirKey) ? '' : raw(' open')}>
+          <summary class="diff-folder-label">${raw(ICON_FOLDER)}${name}</summary>
+          <div class="diff-tree-children">${draw(child, path)}</div>
+        </details>`;
+    });
+  };
+  return draw(root, '');
+}
+
 function renderDiff(stat, fileInfo = []) {
   const lines = stat.trim().split('\n');
   const el = $('detail-diff');
@@ -2522,66 +2612,44 @@ function renderDiff(stat, fileInfo = []) {
     return;
   }
 
-  // Build prefix tree: { children: {name -> node}, file: {adds,dels}|null }
-  function makeNode() { return { children: {}, file: null }; }
-  const root = makeNode();
-  for (const f of files) {
-    const parts = f.path.replace(/\\/g, '/').split('/');
-    let node = root;
-    for (let i = 0; i < parts.length; i++) {
-      const p = parts[i];
-      if (!node.children[p]) node.children[p] = makeNode();
-      node = node.children[p];
-      if (i === parts.length - 1) node.file = { adds: f.adds, dels: f.dels, idx: f.idx };
-    }
-  }
+  state.lastDiff = { stat, fileInfo }; // so the list/tree toggle can redraw without refetching
+  const mode = fileViewMode('tree');
+  const bars = f => html`<span class="diff-stat-add">${'+'.repeat(f.adds)}</span><span class="diff-stat-del">${'-'.repeat(f.dels)}</span>`;
+  const idxAttr = f => f.idx != null ? raw(` data-idx="${f.idx}" title="Click to view side-by-side diff"`) : '';
 
-  // Collapse single-child directories into "dir/subdir" path segments
-  function collapse(node, name) {
-    const keys = Object.keys(node.children);
-    if (keys.length === 1 && node.file === null) {
-      const child = node.children[keys[0]];
-      return collapse(child, name ? `${name}/${keys[0]}` : keys[0]);
-    }
-    return { node, name };
-  }
-
-  function renderNode(node, name) {
-    const sortedKeys = Object.keys(node.children).sort();
-    const children = sortedKeys.map(key => {
-      const { node: cn, name: cn_name } = collapse(node.children[key], key);
-      return renderNode(cn, cn_name);
-    });
-
-    if (name === null) {
-      // Root — just emit children
-      return html`<div class="diff-tree-children">${children}</div>`;
-    }
-
-    if (node.file !== null) {
-      // File leaf
-      const bars = html`<span class="diff-stat-add">${'+'.repeat(node.file.adds)}</span><span class="diff-stat-del">${'-'.repeat(node.file.dels)}</span>`;
-      const idxAttr = node.file.idx != null ? raw(` data-idx="${node.file.idx}" title="Click to view side-by-side diff"`) : '';
+  let body;
+  if (mode === 'list') {
+    // Flat list: file name first, its folder dimmed after it.
+    body = html`<div class="diff-tree-children file-list">${files.map(f => {
+      const norm = f.path.replace(/\\/g, '/');
+      const cut = norm.lastIndexOf('/');
+      const name = cut < 0 ? norm : norm.slice(cut + 1);
+      const dir = cut < 0 ? '' : norm.slice(0, cut);
       return html`
-        <div class="diff-stat-line"${idxAttr}>
-          <span class="diff-tree-file">${raw(ICON_FILE)}${name}</span>
-          <span>${bars}</span>
+        <div class="diff-stat-line"${idxAttr(f)}>
+          <span class="diff-tree-file">${raw(ICON_FILE)}<span class="fl-name">${name}</span>${dir ? html`<span class="fl-dir" title="${dir}">${dir}</span>` : ''}</span>
+          <span>${bars(f)}</span>
         </div>`;
-    }
-
-    // Directory folder — collapsible via <details> like the branch tree
-    return html`
-      <details class="diff-folder" open>
-        <summary class="diff-folder-label">${raw(ICON_FOLDER)}${name}</summary>
-        <div class="diff-tree-children">${children}</div>
-      </details>`;
+    })}</div>`;
+  } else {
+    body = html`<div class="diff-tree-children">${fileTreeHtml(files, 'c', (f, name) => html`
+      <div class="diff-stat-line"${idxAttr(f)}>
+        <span class="diff-tree-file">${raw(ICON_FILE)}${name}</span>
+        <span>${bars(f)}</span>
+      </div>`)}</div>`;
   }
 
-  const treeHtml = renderNode(root, null);
-  const sumHtml = summary
-    ? html`<div class="diff-tree-summary">${summary}</div>`
-    : '';
-  render(el, html`${sumHtml}${treeHtml}`);
+  render(el, html`
+    <div class="diff-tree-head">
+      <div class="diff-tree-summary">${summary}</div>
+      ${fileViewToggle(mode)}
+    </div>
+    ${body}`);
+  // Re-apply the highlight on the file whose diff is open (the list was just redrawn).
+  const v = state.fileDiff;
+  if (v && !v.wip && v.sha === state.selectedSha) {
+    el.querySelectorAll('.diff-stat-line').forEach(l => l.classList.toggle('active', l.dataset.idx === String(v.idx)));
+  }
 }
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────

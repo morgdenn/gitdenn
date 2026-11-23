@@ -1418,3 +1418,17 @@ body.no-detail #detail-panel, body.no-detail #detail-resizer { display: none; }
 
 /* Branch labels in the graph can be double-clicked to check the branch out */
 .ref-badge[data-checkout] { cursor: pointer; user-select: none; }
+
+/* ─── File list: list / tree toggle ──────────────────────────────────────────── */
+.diff-tree-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.diff-tree-head .diff-tree-summary { margin-bottom: 0; }
+.view-toggle { display: inline-flex; align-items: center; justify-content: center; padding: 2px 6px; line-height: 1; }
+.wd-head-actions { display: inline-flex; align-items: center; gap: 4px; }
+.diff-tree-children.file-list { padding-left: 0; }
+.diff-tree-file { min-width: 0; }
+.diff-tree-file .fl-name { flex-shrink: 0; }
+.diff-tree-file .fl-dir { min-width: 0; margin-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-weight: 400; font-size: 10px; }
+.diff-stat-line > span:last-child { flex-shrink: 0; margin-left: 8px; }
+/* In tree view the row shows just the file name: read it left-to-right */
+.wd-path.in-tree { direction: ltr; }
+.wd-tree .diff-tree-children { padding-left: 12px; }
