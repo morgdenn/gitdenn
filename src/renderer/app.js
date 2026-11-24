@@ -288,7 +288,12 @@ function bindEvents() {
   // Right-click a file (commit files or uncommitted changes) → copy name / path
   on('detail-diff', 'contextmenu', '.diff-stat-line[data-path], .wd-file', (el, e) => {
     e.preventDefault();
-    showFileCtxMenu(e.clientX, e.clientY, el.dataset.path);
+    showFileCtxMenu(e.clientX, e.clientY, el.dataset.path, { stash: el.classList.contains('wd-file') });
+  });
+  // Right-click a folder in a file tree (uncommitted changes can stash it)
+  on('detail-diff', 'contextmenu', '.diff-folder-label[data-dir]', (el, e) => {
+    e.preventDefault();
+    showFileCtxMenu(e.clientX, e.clientY, el.dataset.dir, { stash: !!el.closest('.wd'), dir: true });
   });
 
   // Close context menu on any click outside it
@@ -1967,7 +1972,7 @@ async function doCherryPick(shas) {
 function escAttr(s) {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
-function showFileCtxMenu(x, y, path) {
+function showFileCtxMenu(x, y, path, { stash = false, dir = false } = {}) {
   const rel = path.replace(/\\/g, '/');
   const name = rel.slice(rel.lastIndexOf('/') + 1);
   const copy = (text, what) => {
@@ -1976,11 +1981,25 @@ function showFileCtxMenu(x, y, path) {
   };
   $('ctx-copy-filename').onclick = () => copy(name, 'file name');
   $('ctx-copy-relpath').onclick = () => copy(rel, 'relative path');
+  $('ctx-copy-filename').textContent = dir ? 'Copy folder name' : 'Copy filename';
+  // Uncommitted changes only: stash just this file / folder into its own stash.
+  $('ctx-stash-path').style.display = stash ? '' : 'none';
+  $('ctx-sep-stash-path').style.display = stash ? '' : 'none';
+  $('ctx-stash-path').textContent = dir ? 'Stash this folder' : 'Stash this file';
+  $('ctx-stash-path').onclick = () => { hideFileCtxMenu(); doStashPath(rel, dir); };
   const menu = $('file-ctx-menu');
   menu.style.display = 'block';
   const vw = window.innerWidth, vh = window.innerHeight;
-  menu.style.left = (x + 180 > vw ? vw - 184 : x) + 'px';
-  menu.style.top  = (y + 76 > vh ? vh - 80 : y) + 'px';
+  menu.style.left = (x + 190 > vw ? vw - 194 : x) + 'px';
+  menu.style.top  = (y + 110 > vh ? vh - 114 : y) + 'px';
+}
+async function doStashPath(rel, isDir) {
+  if (!state.repoPath) return;
+  const res = await window.gitApp.stashPush(state.repoPath, `${rel}${isDir ? '/' : ''}`, true, [rel]);
+  if (!res.success) { alert(`Stash failed: ${res.error}`); return; }
+  showToast(`Stashed ${rel}`);
+  await refreshStashes();
+  await loadRepo(state.repoPath);
 }
 function hideFileCtxMenu() {
   const m = $('file-ctx-menu');
@@ -2719,7 +2738,7 @@ function fileTreeHtml(items, scope, leaf) {
       const dirKey = `${scope}:${path}`;
       return html`
         <details class="diff-folder" data-key="${dirKey}"${closedDirs.has(dirKey) ? '' : raw(' open')}>
-          <summary class="diff-folder-label">${raw(ICON_FOLDER)}${name}</summary>
+          <summary class="diff-folder-label" data-dir="${path}">${raw(ICON_FOLDER)}${name}</summary>
           <div class="diff-tree-children">${draw(child, path)}</div>
         </details>`;
     });

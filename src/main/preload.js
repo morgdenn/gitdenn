@@ -35,7 +35,7 @@ contextBridge.exposeInMainWorld('gitApp', {
   pullBranch:  (repoPath, branch) => ipcRenderer.invoke('git:pullBranch', { repoPath, branch }),
   pullRebase:(repoPath) => ipcRenderer.invoke('git:pullRebase', { repoPath }),
   stashList: (repoPath) => ipcRenderer.invoke('git:stashList', { repoPath }),
-  stashPush: (repoPath, message, includeUntracked) => ipcRenderer.invoke('git:stashPush', { repoPath, message, includeUntracked }),
+  stashPush: (repoPath, message, includeUntracked, paths) => ipcRenderer.invoke('git:stashPush', { repoPath, message, includeUntracked, paths }),
   stashOp: (repoPath, op, index) => ipcRenderer.invoke('git:stashOp', { repoPath, op, index }),
   merge: (repoPath, branch) => ipcRenderer.invoke('git:merge', { repoPath, branch }),
   rebaseOnto:  (repoPath, branch) => ipcRenderer.invoke('git:rebaseOnto', { repoPath, branch }),

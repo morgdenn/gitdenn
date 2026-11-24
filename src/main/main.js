@@ -631,11 +631,16 @@ ipcMain.handle('git:stashList', async (event, { repoPath }) => {
   }
 });
 
-ipcMain.handle('git:stashPush', async (event, { repoPath, message, includeUntracked }) => {
+ipcMain.handle('git:stashPush', async (event, { repoPath, message, includeUntracked, paths }) => {
   try {
     const args = ['stash', 'push'];
     if (includeUntracked) args.push('--include-untracked');
     if (message && message.trim()) args.push('-m', message.trim());
+    // Optional pathspec: stash only these files/folders (to their own stash).
+    if (Array.isArray(paths) && paths.length) {
+      if (paths.some(p => typeof p !== 'string' || !p)) return { success: false, error: 'Invalid path.' };
+      args.push('--', ...paths);
+    }
     const out = await simpleGit(repoPath).raw(args);
     if (/No local changes to save/i.test(out)) return { success: false, error: 'There are no changes to stash.' };
     return { success: true };
