@@ -657,6 +657,24 @@ ipcMain.handle('git:stashOp', async (event, { repoPath, op, index }) => {
   }
 });
 
+// Merge `branch` into the current branch. On conflict the merge is aborted so
+// the repo is left exactly as it was.
+ipcMain.handle('git:merge', async (event, { repoPath, branch }) => {
+  const git = simpleGit(repoPath);
+  try {
+    if (typeof branch !== 'string' || !branch || branch.startsWith('-')) return { success: false, error: 'Invalid branch.' };
+    const out = await git.raw(['merge', '--no-edit', '--autostash', branch]);
+    return { success: true, upToDate: /Already up to date/i.test(out) };
+  } catch (err) {
+    const msg = String(err.message || err);
+    if (/CONFLICT|Automatic merge failed|merge conflict/i.test(msg)) {
+      try { await git.raw(['merge', '--abort']); } catch (e) { /* nothing to abort */ }
+      return { success: false, error: 'The merge has conflicts, so it was cancelled and nothing was changed.' };
+    }
+    return { success: false, error: friendlyPullError(err) };
+  }
+});
+
 ipcMain.handle('git:rebaseOnto', async (event, { repoPath, branch }) => {
   try {
     const git = simpleGit(repoPath);

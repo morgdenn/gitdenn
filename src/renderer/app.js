@@ -1299,6 +1299,11 @@ function showBranchCtxMenu(x, y, branch, { isCurrent, isRemote }) {
   pull.style.display = isRemote ? 'none' : 'block';
   if (!isRemote) pull.onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); doPullBranch(b); };
 
+  const mrg = $('ctx-merge-branch');
+  mrg.style.display = isCurrent ? 'none' : 'block';
+  mrg.textContent = state.currentBranch ? `Merge into ${state.currentBranch}` : 'Merge into current branch';
+  mrg.onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); doMergeBranch(b); };
+
   const checkout = $('ctx-checkout-remote');
   checkout.style.display = isRemote ? 'block' : 'none';
   if (isRemote) checkout.onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); checkoutRemoteBranch(b); };
@@ -1325,7 +1330,7 @@ function showBranchCtxMenu(x, y, branch, { isCurrent, isRemote }) {
   menu.style.display = 'block';
   // Clamp to viewport
   const vw = window.innerWidth, vh = window.innerHeight;
-  const mw = 180, mh = isRemote ? 72 : 140;
+  const mw = 200, mh = isRemote ? 100 : 170;
   menu.style.left = (x + mw > vw ? vw - mw - 4 : x) + 'px';
   menu.style.top  = (y + mh > vh ? vh - mh - 4 : y) + 'px';
 }
@@ -1338,6 +1343,18 @@ function hideBranchCtxMenu() {
 function doCopyBranchName(branch) {
   if (!branch) return;
   navigator.clipboard.writeText(branch).then(() => showToast(`Copied: ${branch}`));
+}
+
+async function doMergeBranch(branch) {
+  if (!branch || !state.repoPath) return;
+  const into = state.currentBranch || 'the current branch';
+  if (!confirm(`Merge "${branch}" into "${into}"?`)) return;
+  const overlay = showLoading(`Merging ${branch}…`);
+  const res = await window.gitApp.merge(state.repoPath, branch);
+  overlay.remove();
+  if (!res.success) { alert(`Merge failed: ${res.error}`); return; }
+  showToast(res.upToDate ? `${into} is already up to date with ${branch}` : `Merged ${branch} into ${into}`);
+  await loadRepo(state.repoPath);
 }
 
 async function doRenameBranch(branch) {
