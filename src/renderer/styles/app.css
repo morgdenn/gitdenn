@@ -1402,12 +1402,11 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 
 
 /* Fast commit push: pinned to the very bottom of the right panel, well away from Commit */
-#stash-bar { flex-shrink: 0; padding: 10px 16px; border-top: 1px solid var(--border-lt); background: var(--bg-panel); }
-#stash-bar[hidden], #detail-content[style*="display: none"] ~ #stash-bar { display: none; }
+#stash-bar { padding: 12px 16px 16px; }
+#stash-bar[hidden] { display: none; }
 .pop-btn { background: var(--green); color: var(--bg-deep); border: 1px solid transparent; font-family: var(--font); font-size: 13px; font-weight: 700; padding: 10px 14px; cursor: pointer; }
 .pop-btn:hover { filter: brightness(1.08); }
 .pop-btn.commit-toggle-btn { border-left: 1px solid rgba(0,0,0,0.25); padding: 0; }
-.stash-bar-menu { top: auto; bottom: calc(100% + 4px); }
 .stash-bar-menu .danger { color: var(--red, #f87171); }
 #fast-commit-bar { flex-shrink: 0; padding: 10px 16px; border-top: 1px solid var(--border-lt); background: var(--bg-panel); }
 #fast-commit-bar[hidden], #detail-content[style*="display: none"] ~ #fast-commit-bar { display: none; }
