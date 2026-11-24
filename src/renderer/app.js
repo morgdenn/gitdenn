@@ -694,13 +694,26 @@ async function refreshStashes() {
 function renderStashGroup() {
   const list = state.stashes || [];
   $('stash-group').style.display = list.length ? '' : 'none';
-  render('stash-branches-list', list.map(s => html`
-    <div class="branch-item stash-row" data-index="${s.index}" title="${(s.message || '(no message)') + (s.branch ? ' · on ' + s.branch : '') + ' · ' + s.when}">
-      ${raw(ICON_BRANCH)}
-      <span class="branch-name stash-branch">${s.branch || '(no branch)'}</span>
-      <span class="stash-note">${s.message || ''}</span>
-    </div>`));
+  // One folder per source branch (like Local / Remote), its stashes inside.
+  const groups = new Map();
+  for (const st of list) {
+    const key = st.branch || '(no branch)';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(st);
+  }
+  const names = [...groups.keys()].sort((a, b) => a.localeCompare(b));
+  render('stash-branches-list', names.map(name => html`
+    <details class="branch-folder" open>
+      <summary class="branch-folder-label">${raw(ICON_FOLDER)}${name}</summary>
+      <div class="branch-tree-children">${groups.get(name).map(st => html`
+        <div class="branch-item stash-row" data-index="${st.index}" title="${(st.message || '(no message)') + ' · ' + st.when}">
+          ${raw(ICON_STASH)}
+          <span class="branch-name">${st.message || '(no message)'}</span>
+        </div>`)}
+      </div>
+    </details>`));
 }
+const ICON_STASH = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><rect x="2" y="3" width="12" height="3" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M3 6v6.5a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6M6.5 9h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>`;
 
 function renderStashList() {
   const list = state.stashes || [];
