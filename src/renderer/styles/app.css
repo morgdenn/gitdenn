@@ -37,6 +37,7 @@
   --repos-w:    210px;
   --branches-w: 200px;
   --local-branches-h: 200px;
+  --stash-h: 150px;
   --toolbar-h:  44px;
   --header-h:   32px;
 
@@ -181,7 +182,8 @@ body {
 }
 #local-group  { height: var(--local-branches-h); flex-shrink: 0; }
 #remote-group { flex: 1; }
-#stash-group { flex-shrink: 0; max-height: 30%; border-top: 1px solid var(--border); }
+#stash-group { height: var(--stash-h); flex-shrink: 0; }
+#stash-branches-list { padding-bottom: 12px; }
 .stash-row { cursor: pointer; }
 .stash-row .stash-branch { flex: 0 1 auto; max-width: 60%; }
 .stash-row .stash-note { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: 11px; margin-left: 6px; }

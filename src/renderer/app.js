@@ -172,6 +172,7 @@ function bindEvents() {
   initColumnResizers();
   initSidebarPanels();
   initBranchSplit();
+  initStashSplit();
   initDetailResize();
 
   // Close the commit dropdown when clicking outside it
@@ -498,6 +499,32 @@ function initDetailResize() {
 
 // Draggable divider between the Local and Remote branch lists — sets the Local
 // group's height; Remote fills the remaining space. Each list scrolls on its own.
+// Draggable divider above the Stashed section — dragging up makes it taller.
+function initStashSplit() {
+  const divider = $('stash-split');
+  if (!divider) return;
+  divider.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const rootStyle = document.documentElement.style;
+    const startY = e.clientY;
+    const startH = $('stash-group').getBoundingClientRect().height;
+    const total  = $('branches-sections').getBoundingClientRect().height;
+    const MIN = 48;
+    document.body.classList.add('row-resizing');
+    const onMove = ev => {
+      const h = Math.max(MIN, Math.min(startH - (ev.clientY - startY), total - 2 * MIN));
+      rootStyle.setProperty('--stash-h', h + 'px');
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.classList.remove('row-resizing');
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
 function initBranchSplit() {
   const divider = $('branch-split');
   if (!divider) return;
