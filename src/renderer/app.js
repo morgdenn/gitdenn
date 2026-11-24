@@ -249,6 +249,14 @@ function bindEvents() {
     showFileDiff();
   });
 
+  $('btn-stash-pop').addEventListener('click', () => runSelectedStashOp('pop'));
+  $('btn-stash-menu').addEventListener('click', () => { const m = $('stash-bar-menu'); m.hidden = !m.hidden; });
+  on('stash-bar-menu', 'click', '[data-stash-op]', el => runSelectedStashOp(el.dataset.stashOp));
+  document.addEventListener('click', e => {
+    const m = $('stash-bar-menu');
+    if (m && !m.hidden && !e.target.closest('#stash-bar .commit-split-btn')) m.hidden = true;
+  });
+
   $('squash-cancel').addEventListener('click', hideSquashModal);
   $('squash-cancel-2').addEventListener('click', hideSquashModal);
   $('squash-confirm').addEventListener('click', doSquash);
@@ -822,7 +830,21 @@ async function doStashOp(op, index) {
   if (!res.success) { alert(`Stash ${op} failed: ${res.error}`); await refreshStashes(); return; }
   showToast(op === 'drop' ? 'Stash dropped' : op === 'pop' ? 'Stash applied and removed' : 'Stash applied');
   await refreshStashes();
-  if (op !== 'drop') await loadRepo(state.repoPath);
+  // If the stash that was open in the details panel is gone, clear the panel.
+  const sel = (state.commits || []).find(c => c.sha === state.selectedSha);
+  if (sel && sel.isStash && !(state.stashes || []).some(s => s.sha === sel.sha)) resetDetailPanel();
+  await loadRepo(state.repoPath);
+}
+
+// Pop / Apply / Drop for the stash selected in the graph (bar at the bottom of the details panel).
+function selectedStash() {
+  return (state.stashes || []).find(s => s.sha === state.selectedSha) || null;
+}
+function runSelectedStashOp(op) {
+  const st = selectedStash();
+  $('stash-bar-menu').hidden = true;
+  if (!st) { showToast('That stash no longer exists'); return; }
+  return doStashOp(op, st.index);
 }
 
 // Only shown when a normal push was rejected because the remote has commits we
@@ -1003,6 +1025,7 @@ function resetDetailPanel() {
   detailContent.style.display = 'none';
   detailPlaceholder.style.display = 'flex';
   $('fast-commit-bar').hidden = true;
+  $('stash-bar').hidden = true;
 }
 
 // A synthetic "WIP" commit representing uncommitted changes, linked to HEAD.
@@ -2072,6 +2095,8 @@ async function selectCommit(sha, idx) {
   detailPlaceholder.style.display = 'none';
   detailContent.style.display = 'block';
   $('fast-commit-bar').hidden = !commit.isWip;
+  $('stash-bar').hidden = !commit.isStash;
+  $('stash-bar-menu').hidden = true;
 
   if (commit.isWip) {
     await renderWipDetail();
