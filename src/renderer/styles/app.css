@@ -839,6 +839,7 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 .ref-branch { background: rgba(102,217,239,0.15); color: var(--teal); border: 1px solid rgba(102,217,239,0.4); }
 .ref-remote { background: rgba(230,219,116,0.13); color: var(--amber); border: 1px solid rgba(230,219,116,0.35); }
 .ref-tag    { background: rgba(249,38,114,0.15); color: var(--pink); border: 1px solid rgba(249,38,114,0.4); }
+.ref-stash  { background: rgba(251,191,36,0.15); color: var(--amber, #fbbf24); border: 1px solid rgba(251,191,36,0.4); }
 
 .commit-author {
   width: var(--author-w);

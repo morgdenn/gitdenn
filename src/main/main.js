@@ -101,15 +101,38 @@ ipcMain.handle('git:log', async (event, { repoPath }) => {
     ]);
 
     const raw = logResult.all ? null : null; // unused, using raw below
+    // Every stash (not just the newest one, which is all --all reaches), so each
+    // can be found and selected in the graph.
+    let stashes = [];
+    try {
+      const so = await git.raw(['stash', 'list', '--format=%H %P']);
+      stashes = so.split(/\r?\n/).filter(Boolean).map((line, i) => {
+        const [sha, ...parents] = line.trim().split(' ');
+        return { sha, parents, index: i };
+      });
+    } catch (e) { stashes = []; }
+
     const rawLog = await git.raw([
       'log',
       '--all',
+      ...stashes.map(s => s.sha),
       '--date-order',
       '--format=%H%n%P%n%an%n%ae%n%at%n%s%n%D%n---END---',
       '-500',
     ]);
 
-    const commits = parseRawLog(rawLog);
+    let commits = parseRawLog(rawLog);
+    if (stashes.length) {
+      // A stash is a merge of the working-tree commit with an "index on …" commit
+      // (and an optional untracked-files commit). Hide those helpers, show the stash
+      // as one commit hanging off the commit it was made on.
+      const helpers = new Set(stashes.flatMap(s => s.parents.slice(1)));
+      const byStash = new Map(stashes.map(s => [s.sha, s]));
+      commits = commits.filter(c => !helpers.has(c.sha)).map(c => {
+        const st = byStash.get(c.sha);
+        return st ? { ...c, parents: c.parents.slice(0, 1), refs: [`stash: stash@{${st.index}}`], isStash: true } : c;
+      });
+    }
     const branches = await git.branch(['-a']);
     const status = await git.status();
     const remotes = await git.getRemotes(true);
@@ -617,13 +640,13 @@ ipcMain.handle('git:pullRebase',async (event, { repoPath }) => {
 // ─── Stash ────────────────────────────────────────────────────────────────────
 ipcMain.handle('git:stashList', async (event, { repoPath }) => {
   try {
-    const out = await simpleGit(repoPath).raw(['stash', 'list', '--format=%gd%x1f%gs%x1f%cr%x1f%P']);
+    const out = await simpleGit(repoPath).raw(['stash', 'list', '--format=%gd%x1f%gs%x1f%cr%x1f%P%x1f%H']);
     const stashes = out.split('\n').filter(Boolean).map(line => {
-      const [ref, subject, when, parents] = line.split('\x1f');
+      const [ref, subject, when, parents, sha] = line.split('\x1f');
       const idx = parseInt((/\{(\d+)\}/.exec(ref) || [])[1], 10);
       // Subjects look like "On <branch>: <message>" or "WIP on <branch>: <sha> <msg>".
       const m = /^(?:WIP on|On) ([^:]+): (.*)$/.exec(subject || '');
-      return { index: idx, branch: m ? m[1] : '', message: m ? m[2] : (subject || ''), when: when || '', base: ((parents || '').split(' ')[0]) || '' };
+      return { index: idx, branch: m ? m[1] : '', message: m ? m[2] : (subject || ''), when: when || '', base: ((parents || '').split(' ')[0]) || '', sha: (sha || '').trim() };
     });
     return { success: true, stashes };
   } catch (err) {

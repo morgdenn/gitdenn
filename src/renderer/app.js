@@ -747,14 +747,15 @@ function renderStashGroup() {
 }
 const ICON_STASH = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><rect x="2" y="3" width="12" height="3" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M3 6v6.5a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6M6.5 9h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>`;
 
-// A stash isn't a commit in the graph (git log --all skips refs/stash), so jump
-// to the commit it was made on.
+// Select the stash's own commit in the graph (shown with a stash@{n} badge).
 function jumpToStash(index) {
   const st = (state.stashes || []).find(s => s.index === index);
-  if (!st || !st.base) return;
-  if (!(state.commits || []).some(c => c.sha === st.base)) { showToast('That commit is not in the loaded graph'); return; }
-  selectCommit(st.base, null);
-  const el = document.querySelector(`.commit-row[data-sha="${st.base}"]`);
+  if (!st) return;
+  // Prefer the stash commit itself (so its files can be inspected); fall back to its base commit.
+  const sha = [st.sha, st.base].find(h => h && (state.commits || []).some(c => c.sha === h));
+  if (!sha) { showToast('That stash is not in the loaded graph'); return; }
+  selectCommit(sha, null);
+  const el = document.querySelector(`.commit-row[data-sha="${sha}"]`);
   if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
@@ -1736,6 +1737,7 @@ function buildRefBadges(refs, color, remoteNames) {
     if (ref === 'HEAD') { cls = 'ref-head'; label = 'HEAD'; }
     else if (ref.startsWith('HEAD -> ')) { cls = 'ref-head'; label = ref.slice(8); }
     else if (ref.startsWith('tag: ')) { cls = 'ref-tag'; label = ref.slice(5); }
+    else if (ref.startsWith('stash: ')) { cls = 'ref-stash'; label = ref.slice(7); }
     else {
       const remote = ref.split('/')[0];
       if (remotes.has(remote)) {
