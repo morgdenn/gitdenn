@@ -721,24 +721,18 @@ async function refreshStashes() {
 function renderStashGroup() {
   const list = state.stashes || [];
   $('stash-group').style.display = list.length ? '' : 'none';
-  // One folder per source branch (like Local / Remote), its stashes inside.
-  const groups = new Map();
-  for (const st of list) {
-    const key = st.branch || '(no branch)';
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(st);
-  }
-  const names = [...groups.keys()].sort((a, b) => a.localeCompare(b));
-  render('stash-branches-list', names.map(name => html`
-    <details class="branch-folder" open>
-      <summary class="branch-folder-label">${raw(ICON_FOLDER)}${name}</summary>
-      <div class="branch-tree-children">${groups.get(name).map(st => html`
-        <div class="branch-item stash-row" data-index="${st.index}" title="${(st.message || '(no message)') + ' · ' + st.when}">
-          ${raw(ICON_STASH)}
-          <span class="branch-name">${st.message || '(no message)'}</span>
-        </div>`)}
-      </div>
-    </details>`));
+  // Same tree as Local / Remote: the source branch (split on "/") is the folder
+  // path, its stashes are the leaves.
+  const items = list.map(st => ({
+    path: `${st.branch || '(no branch)'}/stash@{${String(st.index).padStart(4, '0')}}`,
+    value: st.index, st,
+  }));
+  const leaf = it => html`
+    <div class="branch-item stash-row" data-index="${it.st.index}" title="${(it.st.message || '(no message)') + ' · ' + it.st.when}">
+      ${raw(ICON_STASH)}
+      <span class="branch-name">${it.st.message || '(no message)'}</span>
+    </div>`;
+  render('stash-branches-list', renderBranchTree(buildBranchTree(items), { remote: false, leaf }));
 }
 const ICON_STASH = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><rect x="2" y="3" width="12" height="3" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M3 6v6.5a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6M6.5 9h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>`;
 
@@ -1255,6 +1249,7 @@ function renderBranchTree(node, opts, depth = 0) {
   });
 
   return entries.map(({ child, leafItem, label }) => {
+    if (leafItem && opts.leaf) return opts.leaf(leafItem);
     if (leafItem) {
       const it = leafItem;
       const cls = `branch-item${opts.remote ? ' branch-remote' : ''}${it.current ? ' current' : ''}${it.stale ? ' stale' : ''}`;
