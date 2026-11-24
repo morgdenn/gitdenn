@@ -267,7 +267,12 @@ function bindEvents() {
   on('remote-branches-list', 'click', '.branch-remote', (el, e) => { console.log('[remote click]', el.dataset.branch, el); scrollToBranch(el.dataset.branch); });
 
   // Right-click a local branch → context menu
-  on('stash-branches-list', 'click', '.stash-row', () => showStashModal());
+  // Click a stash → jump to the commit it was made on; right-click → apply / pop / drop
+  on('stash-branches-list', 'click', '.stash-row', el => jumpToStash(+el.dataset.index));
+  on('stash-branches-list', 'contextmenu', '.stash-row', (el, e) => {
+    e.preventDefault();
+    showStashCtxMenu(e.clientX, e.clientY, +el.dataset.index);
+  });
 
   on('local-branches-list', 'contextmenu', '.branch-item', (el, e) => {
     e.preventDefault();
@@ -290,6 +295,7 @@ function bindEvents() {
   document.addEventListener('click', e => {
     if (!e.target.closest('#file-ctx-menu')) hideFileCtxMenu();
     if (!e.target.closest('#branch-ctx-menu')) hideBranchCtxMenu();
+    if (!e.target.closest('#stash-ctx-menu')) hideStashCtxMenu();
     if (!e.target.closest('#commit-ctx-menu')) hideCommitCtxMenu();
   });
 
@@ -728,13 +734,41 @@ function renderStashGroup() {
     value: st.index, st,
   }));
   const leaf = it => html`
-    <div class="branch-item stash-row" data-index="${it.st.index}" title="${(it.st.message || '(no message)') + ' · ' + it.st.when}">
+    <div class="branch-item stash-row" data-index="${it.st.index}" title="${(it.st.message || '(no message)') + ' · ' + it.st.when + ' · click to find its commit, right-click for actions'}">
       ${raw(ICON_STASH)}
       <span class="branch-name">${it.st.message || '(no message)'}</span>
     </div>`;
   render('stash-branches-list', renderBranchTree(buildBranchTree(items), { remote: false, leaf }));
 }
 const ICON_STASH = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><rect x="2" y="3" width="12" height="3" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M3 6v6.5a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6M6.5 9h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>`;
+
+// A stash isn't a commit in the graph (git log --all skips refs/stash), so jump
+// to the commit it was made on.
+function jumpToStash(index) {
+  const st = (state.stashes || []).find(s => s.index === index);
+  if (!st || !st.base) return;
+  if (!(state.commits || []).some(c => c.sha === st.base)) { showToast('That commit is not in the loaded graph'); return; }
+  selectCommit(st.base, null);
+  const el = document.querySelector(`.commit-row[data-sha="${st.base}"]`);
+  if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+function showStashCtxMenu(x, y, index) {
+  const run = fn => () => { hideStashCtxMenu(); fn(); };
+  $('ctx-stash-apply').onclick = run(() => doStashOp('apply', index));
+  $('ctx-stash-pop').onclick   = run(() => doStashOp('pop', index));
+  $('ctx-stash-drop').onclick  = run(() => doStashOp('drop', index));
+  $('ctx-stash-show').onclick  = run(() => jumpToStash(index));
+  const menu = $('stash-ctx-menu');
+  menu.style.display = 'block';
+  const vw = window.innerWidth, vh = window.innerHeight;
+  menu.style.left = (x + 190 > vw ? vw - 194 : x) + 'px';
+  menu.style.top  = (y + 150 > vh ? vh - 154 : y) + 'px';
+}
+function hideStashCtxMenu() {
+  const m = $('stash-ctx-menu');
+  if (m) m.style.display = 'none';
+}
 
 function renderStashList() {
   const list = state.stashes || [];

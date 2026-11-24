@@ -617,13 +617,13 @@ ipcMain.handle('git:pullRebase',async (event, { repoPath }) => {
 // ─── Stash ────────────────────────────────────────────────────────────────────
 ipcMain.handle('git:stashList', async (event, { repoPath }) => {
   try {
-    const out = await simpleGit(repoPath).raw(['stash', 'list', '--format=%gd%x1f%gs%x1f%cr']);
+    const out = await simpleGit(repoPath).raw(['stash', 'list', '--format=%gd%x1f%gs%x1f%cr%x1f%P']);
     const stashes = out.split('\n').filter(Boolean).map(line => {
-      const [ref, subject, when] = line.split('\x1f');
+      const [ref, subject, when, parents] = line.split('\x1f');
       const idx = parseInt((/\{(\d+)\}/.exec(ref) || [])[1], 10);
       // Subjects look like "On <branch>: <message>" or "WIP on <branch>: <sha> <msg>".
       const m = /^(?:WIP on|On) ([^:]+): (.*)$/.exec(subject || '');
-      return { index: idx, branch: m ? m[1] : '', message: m ? m[2] : (subject || ''), when: when || '' };
+      return { index: idx, branch: m ? m[1] : '', message: m ? m[2] : (subject || ''), when: when || '', base: ((parents || '').split(' ')[0]) || '' };
     });
     return { success: true, stashes };
   } catch (err) {
