@@ -1293,6 +1293,14 @@ function showBranchCtxMenu(x, y, branch, { isCurrent, isRemote }) {
   _ctxBranch = branch;
   const menu = $('branch-ctx-menu');
 
+  // Open branch = check it out (same as double-clicking it). Remote branches use
+  // their own "Open branch (as local)" item below.
+  const open = $('ctx-open-branch');
+  open.style.display = isRemote ? 'none' : 'block';
+  open.disabled = isCurrent;
+  open.title = isCurrent ? 'This branch is already checked out' : '';
+  if (!isRemote) open.onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); checkoutLocalBranch(b); };
+
   $('ctx-copy-branch').onclick = () => { const b = _ctxBranch; hideBranchCtxMenu(); doCopyBranchName(b); };
 
   const pull = $('ctx-pull-branch');
