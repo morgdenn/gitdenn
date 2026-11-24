@@ -36,7 +36,7 @@
 - **Unpushed commits highlight Push**: when the current branch is ahead of its remote, the toolbar Push button stays in its hover (highlighted) state and its tooltip shows the count; likewise Pull is highlighted when the remote has commits to pull down
 - **Push goes straight through**; the force-push dialog only appears if the remote rejected the push (it has commits you don't)
 - **Pull and rebase auto-stash** uncommitted changes first and restore them afterwards, so local edits no longer block a pull; common git failures are shown in plain language
-- **Stash** toolbar button: stash changes (optional message, untracked files included by default), with a count badge and a list to apply, pop or drop saved stashes
+- **Stash** button in the Uncommitted changes panel: stash changes (optional message, untracked files included by default), with a count badge and a list to apply, pop or drop saved stashes
 - **Reopens your most recent repo on startup** (quietly falls back to the welcome screen if it has moved or been deleted)
 - **Repos list** can be sorted A–Z or by most recent with the small button in its header (remembered)
 - **Local branches show whether they are on origin**: a muted cloud when the branch also exists on origin, an amber dashed struck-through cloud when it is local only
@@ -136,7 +136,7 @@ The **graph layout engine** in `app.js` implements a lane-allocation algorithm:
 - [x] Branch delete / rename
 - [x] Pull any branch, live ahead/behind with background fetch
 - [x] Squash commits
-- [x] Stash management (stash button, apply / pop / drop)
+- [x] Stash management (button in the uncommitted changes panel, apply / pop / drop)
 - [ ] Search commits
 - [ ] Drag-and-drop rebase
 

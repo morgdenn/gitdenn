@@ -136,7 +136,6 @@ function bindEvents() {
   $('btn-pull').addEventListener('click', doPull);
   $('btn-rebase').addEventListener('click', showRebaseModal);
   $('btn-push').addEventListener('click', () => doPush(false));
-  $('btn-stash').addEventListener('click', showStashModal);
   $('btn-repo-sort').addEventListener('click', toggleRepoSort);
   $('btn-fast-commit').addEventListener('click', doFastCommit);
   $('stash-cancel').addEventListener('click', hideStashModal);
@@ -680,9 +679,11 @@ async function refreshStashes() {
   const res = await window.gitApp.stashList(repo);
   if (repo !== state.repoPath) return;
   state.stashes = res.success ? res.stashes : [];
-  const badge = $('stash-count');
-  badge.textContent = state.stashes.length;
-  badge.style.display = state.stashes.length ? '' : 'none';
+  // The Stash button lives in the Uncommitted changes panel; update its count in place.
+  document.querySelectorAll('.stash-count').forEach(b => {
+    b.textContent = state.stashes.length;
+    b.style.display = state.stashes.length ? '' : 'none';
+  });
   if ($('stash-modal').style.display !== 'none') renderStashList();
 }
 
@@ -2351,6 +2352,7 @@ async function renderWipDetail() {
         <div class="wd-head">
           <span>Changes (${unstaged.length})</span>
           <span class="wd-head-actions">
+            <button class="wd-bulk" data-act="stash" title="Stash changes (and apply, pop or drop existing stashes)">Stash<span class="stash-count"${(state.stashes || []).length ? '' : raw(' style="display:none;"')}>${(state.stashes || []).length}</span></button>
             ${unstaged.length ? html`<button class="wd-bulk" data-act="stage-all">Stage all</button>` : ''}
             ${fileViewToggle(mode)}
           </span>
@@ -2401,6 +2403,7 @@ async function refreshStatus() {
 
 async function handleWipAction(act, path) {
   if (!state.repoPath) return;
+  if (act === 'stash') return showStashModal();
   if (act === 'toggle-file-view') return switchFileView(path); // `path` carries the current mode
   if (act === 'commit') return doCommit();
   if (act === 'amend')  return doAmend();
