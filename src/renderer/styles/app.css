@@ -181,6 +181,9 @@ body {
 }
 #local-group  { height: var(--local-branches-h); flex-shrink: 0; }
 #remote-group { flex: 1; }
+#stash-group { flex-shrink: 0; max-height: 30%; border-top: 1px solid var(--border); }
+.stash-row { cursor: pointer; }
+.stash-row .branch-name small { color: var(--text-muted); margin-left: 6px; }
 .branch-list-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 
 .branch-split-resizer {

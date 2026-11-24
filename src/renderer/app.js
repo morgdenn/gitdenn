@@ -266,6 +266,8 @@ function bindEvents() {
   on('remote-branches-list', 'click', '.branch-remote', (el, e) => { console.log('[remote click]', el.dataset.branch, el); scrollToBranch(el.dataset.branch); });
 
   // Right-click a local branch → context menu
+  on('stash-branches-list', 'click', '.stash-row', () => showStashModal());
+
   on('local-branches-list', 'contextmenu', '.branch-item', (el, e) => {
     e.preventDefault();
     showBranchCtxMenu(e.clientX, e.clientY, el.dataset.branch, { isCurrent: el.classList.contains('current'), isRemote: false });
@@ -684,7 +686,18 @@ async function refreshStashes() {
     b.textContent = state.stashes.length;
     b.style.display = state.stashes.length ? '' : 'none';
   });
+  renderStashGroup();
   if ($('stash-modal').style.display !== 'none') renderStashList();
+}
+
+// "Stashed changes" section of the Branches menu; only visible when there are stashes.
+function renderStashGroup() {
+  const list = state.stashes || [];
+  $('stash-group').style.display = list.length ? '' : 'none';
+  render('stash-branches-list', list.map(s => html`
+    <div class="branch-item stash-row" data-index="${s.index}" title="${(s.message || '(no message)') + (s.branch ? ' · on ' + s.branch : '') + ' · ' + s.when}">
+      <span class="branch-name">${s.message || '(no message)'}${s.branch ? html`<small>${s.branch}</small>` : ''}</span>
+    </div>`));
 }
 
 function renderStashList() {
