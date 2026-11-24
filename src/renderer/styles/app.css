@@ -1446,3 +1446,6 @@ body.no-detail #detail-panel, body.no-detail #detail-resizer { display: none; }
 }
 .diff-folder[open] > .diff-folder-label::before { transform: rotate(90deg); }
 .diff-folder-label:hover { color: var(--text-pri); }
+
+/* Double-clicking a branch checks it out; don't select its text */
+.branch-item, .branch-remote, .ref-badge { -webkit-user-select: none; user-select: none; }
