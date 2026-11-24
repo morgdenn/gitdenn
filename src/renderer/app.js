@@ -696,7 +696,9 @@ function renderStashGroup() {
   $('stash-group').style.display = list.length ? '' : 'none';
   render('stash-branches-list', list.map(s => html`
     <div class="branch-item stash-row" data-index="${s.index}" title="${(s.message || '(no message)') + (s.branch ? ' · on ' + s.branch : '') + ' · ' + s.when}">
-      <span class="branch-name">${s.message || '(no message)'}${s.branch ? html`<small>${s.branch}</small>` : ''}</span>
+      ${raw(ICON_BRANCH)}
+      <span class="branch-name stash-branch">${s.branch || '(no branch)'}</span>
+      <span class="stash-note">${s.message || ''}</span>
     </div>`));
 }
 
