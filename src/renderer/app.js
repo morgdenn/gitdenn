@@ -278,8 +278,15 @@ function bindEvents() {
     showBranchCtxMenu(e.clientX, e.clientY, el.dataset.branch, { isCurrent: false, isRemote: true });
   });
 
+  // Right-click a file (commit files or uncommitted changes) → copy name / path
+  on('detail-diff', 'contextmenu', '.diff-stat-line[data-path], .wd-file', (el, e) => {
+    e.preventDefault();
+    showFileCtxMenu(e.clientX, e.clientY, el.dataset.path);
+  });
+
   // Close context menu on any click outside it
   document.addEventListener('click', e => {
+    if (!e.target.closest('#file-ctx-menu')) hideFileCtxMenu();
     if (!e.target.closest('#branch-ctx-menu')) hideBranchCtxMenu();
     if (!e.target.closest('#commit-ctx-menu')) hideCommitCtxMenu();
   });
@@ -1847,6 +1854,29 @@ async function doCherryPick(shas) {
   showToast(`Cherry-picked ${shas.length} commit${shas.length === 1 ? '' : 's'} onto ${state.currentBranch || 'HEAD'}`);
 }
 
+function escAttr(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function showFileCtxMenu(x, y, path) {
+  const rel = path.replace(/\\/g, '/');
+  const name = rel.slice(rel.lastIndexOf('/') + 1);
+  const copy = (text, what) => {
+    hideFileCtxMenu();
+    navigator.clipboard.writeText(text).then(() => showToast(`Copied ${what}`), () => alert('Could not copy to the clipboard'));
+  };
+  $('ctx-copy-filename').onclick = () => copy(name, 'file name');
+  $('ctx-copy-relpath').onclick = () => copy(rel, 'relative path');
+  const menu = $('file-ctx-menu');
+  menu.style.display = 'block';
+  const vw = window.innerWidth, vh = window.innerHeight;
+  menu.style.left = (x + 180 > vw ? vw - 184 : x) + 'px';
+  menu.style.top  = (y + 76 > vh ? vh - 80 : y) + 'px';
+}
+function hideFileCtxMenu() {
+  const m = $('file-ctx-menu');
+  if (m) m.style.display = 'none';
+}
+
 function hideCommitCtxMenu() {
   const m = $('commit-ctx-menu');
   if (m) m.style.display = 'none';
@@ -2617,7 +2647,7 @@ function renderDiff(stat, fileInfo = []) {
   state.lastDiff = { stat, fileInfo }; // so the list/tree toggle can redraw without refetching
   const mode = fileViewMode('tree');
   const bars = f => html`<span class="diff-stat-add">${'+'.repeat(f.adds)}</span><span class="diff-stat-del">${'-'.repeat(f.dels)}</span>`;
-  const idxAttr = f => f.idx != null ? raw(` data-idx="${f.idx}" title="Click to view side-by-side diff"`) : '';
+  const idxAttr = f => raw(` data-path="${escAttr(f.path)}"` + (f.idx != null ? ` data-idx="${f.idx}" title="Click to view side-by-side diff"` : ''));
 
   let body;
   if (mode === 'list') {
