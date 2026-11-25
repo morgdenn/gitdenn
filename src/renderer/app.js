@@ -182,6 +182,13 @@ function bindEvents() {
   });
 
   // Keyboard shortcuts
+  // Ctrl+Shift+E (Cmd+Shift+E on macOS) → open the repo in VS Code (hinted in the Open With menu)
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'e') {
+      e.preventDefault();
+      openRepoWith('vscode');
+    }
+  });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); hideRebaseModal(); hideSquashModal(); hideStashModal(); closeFileDiff(); { const m = $('open-with-menu'); if (m) m.hidden = true; } hideBranchCtxMenu(); hideCommitCtxMenu(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'r') loadRepo(state.repoPath);
@@ -2898,6 +2905,9 @@ function nameOpenWithItems() {
   const label = { win32: 'Explorer', darwin: 'Finder' }[window.gitApp.platform] || 'Files';
   const el = document.querySelector('#open-with-menu [data-open="explorer"]');
   if (el) el.textContent = label;
+  // macOS writes shortcuts with symbols (⇧⌘E), other platforms spell them out.
+  const hint = $('vscode-hint');
+  if (hint && window.gitApp.platform === 'darwin') hint.textContent = '⇧⌘E';
 }
 
 async function openRepoWith(target) {
