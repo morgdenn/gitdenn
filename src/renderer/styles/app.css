@@ -1427,7 +1427,8 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 
 /* Open With dropdown (toolbar, top right) */
 .open-with { position: relative; }
-.open-with-menu { z-index: 200; min-width: 160px; }
+.open-with-menu { z-index: 200; min-width: 230px; }
+.open-with-menu .commit-dropdown-item { white-space: nowrap; }
 
 /* Local branch on origin (solid cloud, muted) vs local only (dashed, struck-through, amber) */
 .origin-icon { flex-shrink: 0; }
