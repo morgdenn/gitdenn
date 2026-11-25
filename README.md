@@ -45,6 +45,7 @@
 - **The commit details panel hides** while no commit is selected, giving the graph the full width
 - **Double-click a branch label in the graph to check it out** (a remote label switches to the matching local branch, or creates a tracking branch)
 - **Cherry-pick** from the commit right-click menu: applies the selected commit(s), oldest first, onto the current branch; on conflict it cancels cleanly and changes nothing
+- **Word wrap** toggle in the side-by-side diff header (remembered); wrapped rows stay aligned across both panes
 - **Copy filename / relative path** from the right-click menu on any file in a commit or in the uncommitted changes; in the uncommitted changes the same menu can stash just that file or folder into its own stash
 - **Merge** from a branch's right-click menu: merges it into the current branch; on conflict it cancels cleanly and changes nothing
 - **List / tree view** toggle for the file lists in the right-hand panel (a commit's files and the uncommitted changes); the choice is remembered, and collapsed folders stay collapsed

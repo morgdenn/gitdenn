@@ -244,6 +244,12 @@ function bindEvents() {
   initMinimap();
   $('dv-prev').addEventListener('click', () => stepDiffChange(-1));
   $('dv-next').addEventListener('click', () => stepDiffChange(1));
+  $('dv-wrap').addEventListener('click', () => {
+    try { localStorage.setItem('diffWrap', diffWrapOn() ? '0' : '1'); } catch (e) { /* ignore */ }
+    applyDiffWrap();
+  });
+  // Re-align wrapped rows when the diff area is resized.
+  if (window.ResizeObserver) new ResizeObserver(() => { if (diffWrapOn()) syncWrapHeights(); }).observe($('dv-body'));
   $('dv-mode').addEventListener('click', () => {
     state.diffMode = state.diffMode === 'full' ? 'hunks' : 'full';
     showFileDiff();
@@ -2341,6 +2347,32 @@ function initMinimap() {
   if (window.ResizeObserver) new ResizeObserver(() => { if (state.dvModel) drawMinimap(); }).observe(map);
 }
 
+// ── Word wrap ─────────────────────────────────────────────────────────────────
+function diffWrapOn() {
+  try { return localStorage.getItem('diffWrap') === '1'; } catch (e) { return false; }
+}
+// With wrapping, a long line gets taller on one side only; give each left/right
+// pair the same height so the two panes stay aligned (and scroll together).
+function syncWrapHeights() {
+  const panes = document.querySelectorAll('#dv-body .sbs-pane');
+  if (panes.length !== 2) return;
+  const L = panes[0].querySelectorAll('.sr'), R = panes[1].querySelectorAll('.sr');
+  L.forEach(r => { r.style.height = ''; }); R.forEach(r => { r.style.height = ''; });
+  if (!diffWrapOn()) return;
+  const hs = [];
+  for (let i = 0; i < L.length; i++) hs.push(Math.max(L[i].offsetHeight, R[i] ? R[i].offsetHeight : 0));
+  for (let i = 0; i < L.length; i++) { L[i].style.height = hs[i] + 'px'; if (R[i]) R[i].style.height = hs[i] + 'px'; }
+}
+function applyDiffWrap() {
+  const on = diffWrapOn();
+  $('dv-body').classList.toggle('wrap', on);
+  const b = $('dv-wrap');
+  b.textContent = on ? 'Wrap: on' : 'Wrap: off';
+  b.classList.toggle('active', on);
+  syncWrapHeights();
+  updateMinimapView();
+}
+
 function stepDiffChange(dir) {
   const list = state.dvChanges || [];
   if (!list.length) return;
@@ -2348,7 +2380,8 @@ function stepDiffChange(dir) {
   pos = Math.max(0, Math.min(list.length - 1, pos));
   state.dvPos = pos;
   const pane = document.querySelector('#dv-body .sbs-pane');
-  if (pane) pane.scrollTop = Math.max(0, list[pos] * SBS_ROW_H - 60);
+  const rowEl = pane && pane.querySelectorAll('.sr')[list[pos]]; // row heights vary when wrapping
+  if (pane) pane.scrollTop = Math.max(0, (rowEl ? rowEl.offsetTop : list[pos] * SBS_ROW_H) - 60);
 }
 
 async function showFileDiff() {
@@ -2360,6 +2393,7 @@ async function showFileDiff() {
   $('dv-title').textContent = v.oldFile && v.oldFile !== v.file ? `${v.oldFile}  →  ${v.file}` : v.file;
   $('dv-stats').innerHTML = '';
   $('dv-mode').textContent = state.diffMode === 'full' ? 'Changes only' : 'Full file';
+  applyDiffWrap();
   $('dv-discard').style.display = v.wip ? '' : 'none';
   $('dv-body').innerHTML = '<div class="dv-msg">Loading diff…</div>';
   $('dv-map').style.display = 'none';
@@ -2411,6 +2445,7 @@ async function showFileDiff() {
   }));
   state.dvModel = model;
   $('dv-map').style.display = '';
+  applyDiffWrap();
   drawMinimap();
   stepDiffChange(1); // jump to the first change
 }

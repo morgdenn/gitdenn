@@ -645,7 +645,7 @@ body.row-resizing { cursor: row-resize; user-select: none; }
 .sbs-pane::-webkit-scrollbar { width: 10px; height: 10px; }
 .sbs-pane::-webkit-scrollbar-track { background: transparent; }
 .sbs-pane::-webkit-scrollbar-thumb { background: var(--border-lt); border-radius: 5px; }
-.sbs-lines { min-width: max-content; }
+.sbs-lines { min-width: max-content; position: relative; }
 .sr { display: flex; height: 18px; line-height: 18px; white-space: pre; tab-size: 4; }
 .sr .sn {
   flex: 0 0 48px; width: 48px;
@@ -654,6 +654,12 @@ body.row-resizing { cursor: row-resize; user-select: none; }
 }
 .sr .sn { position: sticky; left: 0; z-index: 1; }
 .sr .st { flex: 1; padding: 0 8px; color: var(--text-sec); user-select: text; }
+/* Word wrap (toggle in the diff header). Row heights are matched across the two
+   panes by JS so the left and right sides stay aligned. */
+#dv-body.wrap .sbs-lines { min-width: 0; }
+#dv-body.wrap .sr { height: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+#dv-body.wrap .sr .sn { align-self: stretch; }
+#dv-wrap.active { background: var(--accent); color: var(--bg-deep); }
 .sr-del { background: rgba(249,38,114,0.13); }
 .sr-del .sn { background: #3a2230; color: var(--text-sec); }
 .sr-del .st { color: var(--text-pri); }
