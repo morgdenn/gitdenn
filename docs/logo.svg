@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128" role="img" aria-label="GitDenn logo — a bear at his den">
+  <!-- Den: stone rim, green accent ring, dark opening -->
+  <circle cx="32" cy="31" r="28" fill="#45463c"/>
+  <circle cx="32" cy="31" r="28" fill="none" stroke="#a6e22e" stroke-width="2" opacity="0.55"/>
+  <circle cx="32" cy="33" r="22" fill="#141509"/>
+  <!-- Grassy ground -->
+  <ellipse cx="32" cy="60" rx="27" ry="8" fill="#5f8a29"/>
+  <!-- Bear -->
+  <ellipse cx="32" cy="46" rx="14" ry="13" fill="#9c7248"/>
+  <ellipse cx="24" cy="54" rx="4.5" ry="3.3" fill="#7d5a38"/>
+  <ellipse cx="40" cy="54" rx="4.5" ry="3.3" fill="#7d5a38"/>
+  <ellipse cx="32" cy="48" rx="8" ry="8" fill="#c9a06f" opacity="0.5"/>
+  <circle cx="23" cy="23" r="4.5" fill="#8a6440"/>
+  <circle cx="41" cy="23" r="4.5" fill="#8a6440"/>
+  <circle cx="23" cy="23" r="2" fill="#c9a06f"/>
+  <circle cx="41" cy="23" r="2" fill="#c9a06f"/>
+  <circle cx="32" cy="29" r="11" fill="#9c7248"/>
+  <ellipse cx="32" cy="33" rx="6" ry="4.6" fill="#ecd8b6"/>
+  <ellipse cx="32" cy="30.5" rx="2" ry="1.4" fill="#2b2a25"/>
+  <path d="M32 32v2.4M32 34.4q-2 1.4-3.4 0M32 34.4q2 1.4 3.4 0" fill="none" stroke="#2b2a25" stroke-width="0.8" stroke-linecap="round"/>
+  <circle cx="27.5" cy="27" r="1.6" fill="#2b2a25"/>
+  <circle cx="36.5" cy="27" r="1.6" fill="#2b2a25"/>
+</svg>

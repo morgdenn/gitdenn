@@ -70,7 +70,7 @@ Follow that shape.
 The owner wants **every completed feature committed and pushed automatically**
 to `origin main` — no need to ask.
 
-- Repo: `https://github.com/morgdenn/gitdenn` (private).
+- Repo: `https://github.com/morgdenn/gitdenn` (public). The download site is `docs/index.html`, served by GitHub Pages from `/docs` on `main`.
 - One logical feature per commit; write a clear, descriptive message.
 - **Syntax-check before committing:** `node --check <file>` on any changed
   `.js`. (There is no test suite yet.)

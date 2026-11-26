@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitDenn — a desktop Git client</title>
+<meta name="description" content="GitDenn is a fast, free desktop Git client that shows your commit history as an interactive branch graph. Windows and macOS.">
+<link rel="icon" href="icon.png">
+<style>
+  :root {
+    --bg: #1e1f1c; --panel: #272822; --panel-2: #2f302a; --border: #3e3d32;
+    --text: #f8f8f2; --text-2: #c9c9bd; --muted: #8f908a;
+    --green: #a6e22e; --blue: #66d9ef; --pink: #f92672;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text-2);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: var(--blue); }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+  header.top { padding: 18px 0; border-bottom: 1px solid var(--border); }
+  header.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 700; text-decoration: none; font-size: 18px; }
+  .brand img { width: 32px; height: 32px; }
+  nav a { margin-left: 18px; color: var(--text-2); text-decoration: none; font-size: 14px; }
+  nav a:hover { color: var(--green); }
+
+  .hero { text-align: center; padding: 64px 20px 40px; }
+  .hero img { width: 112px; height: 112px; }
+  h1 { color: var(--text); font-size: clamp(32px, 6vw, 52px); line-height: 1.1; margin: 18px 0 12px; }
+  h1 em { color: var(--green); font-style: normal; }
+  .lead { max-width: 640px; margin: 0 auto; font-size: 18px; color: var(--text-2); }
+
+  .dl { margin: 32px 0 8px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel); color: var(--text);
+    text-decoration: none; font-weight: 600; font-size: 15px;
+  }
+  .btn:hover { border-color: var(--green); }
+  .btn.primary { background: var(--green); border-color: var(--green); color: #1e1f1c; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn[hidden] { display: none; }
+  .version { color: var(--muted); font-size: 13px; min-height: 20px; }
+  .note { max-width: 640px; margin: 10px auto 0; font-size: 13px; color: var(--muted); }
+
+  section { padding: 44px 0; border-top: 1px solid var(--border); }
+  h2 { color: var(--text); font-size: 26px; margin: 0 0 6px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .card h3 { margin: 0 0 6px; font-size: 16px; color: var(--text); }
+  .card h3::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: 8px; vertical-align: middle; }
+  .card:nth-child(3n+2) h3::before { background: var(--blue); }
+  .card:nth-child(3n) h3::before { background: var(--pink); }
+  .card p { margin: 0; font-size: 14.5px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  td, th { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--text); white-space: nowrap; }
+  kbd { background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font: 12px ui-monospace, Menlo, Consolas, monospace; color: var(--text); }
+  code { font: 13.5px ui-monospace, Menlo, Consolas, monospace; background: var(--panel-2); padding: 1px 6px; border-radius: 4px; color: var(--text); }
+  pre { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  footer { border-top: 1px solid var(--border); padding: 28px 0 48px; color: var(--muted); font-size: 14px; text-align: center; }
+  footer a { color: var(--text-2); }
+  @media (max-width: 560px) { nav a:not(.keep) { display: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="logo.svg" alt="">GitDenn</a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#source">Source</a>
+      <a class="keep" href="https://github.com/morgdenn/gitdenn">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero" id="top">
+    <img src="logo.svg" alt="GitDenn logo">
+    <h1>A desktop Git client that<br>shows your history as a <em>graph</em></h1>
+    <p class="lead">GitDenn is a free, fast Git GUI. See every branch and merge at a glance, stage and commit with a click, and keep stashes, cherry-picks and merges close at hand.</p>
+
+    <div class="dl" id="download">
+      <a class="btn primary" id="dl-main" href="https://github.com/morgdenn/gitdenn/releases/latest">Download GitDenn</a>
+      <a class="btn" id="dl-alt" href="https://github.com/morgdenn/gitdenn/releases/latest" hidden></a>
+    </div>
+    <div class="version" id="version"></div>
+    <p class="note">Windows and macOS. All downloads are on the <a href="https://github.com/morgdenn/gitdenn/releases/latest">releases page</a>.</p>
+  </div>
+
+  <section id="features"><div class="wrap">
+    <h2>What it does</h2>
+    <p class="sub">Everything you reach for every day, without the command line.</p>
+    <div class="grid">
+      <div class="card"><h3>Interactive commit graph</h3><p>Branches and merges drawn on a canvas, with the default branch always on the left in the theme green. Click any commit for its message and files.</p></div>
+      <div class="card"><h3>Side-by-side diffs</h3><p>See the whole file split old and new, jump between changes, use the mini map, and turn word wrap on or off.</p></div>
+      <div class="card"><h3>Stage, commit, fast commit</h3><p>Stage files or whole folders, write a message (or generate one locally), and use <strong>Fast commit push</strong> to stage, commit and push in one click.</p></div>
+      <div class="card"><h3>Branches that make sense</h3><p>A tree grouped by <code>/</code>, ahead/behind counts, stale-branch dimming, and a marker showing which local branches are on origin. Double-click to check out.</p></div>
+      <div class="card"><h3>Stashes, done well</h3><p>Stash everything, or just one file or folder. Each stash shows in the graph as its own commit, with a green <strong>Pop</strong> button and Apply and Drop beside it.</p></div>
+      <div class="card"><h3>Merge, cherry-pick, squash</h3><p>Right-click for merge, cherry-pick and squash. If something conflicts, GitDenn cancels cleanly and leaves your repo untouched.</p></div>
+      <div class="card"><h3>Safe pull and push</h3><p>Pull and rebase auto-stash your local changes first. Push goes straight through; the force option appears only if the remote rejected it.</p></div>
+      <div class="card"><h3>List or tree file views</h3><p>View changed files as a flat list or a folder tree, with collapsible folders, and copy a file's name or path from the right-click menu.</p></div>
+      <div class="card"><h3>Open it anywhere</h3><p>Open the repo in GitHub, VS Code (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>), your file manager or a terminal. It reopens your last repo on start-up.</p></div>
+    </div>
+  </div></section>
+
+  <section id="install"><div class="wrap">
+    <h2>Installing</h2>
+    <p class="sub">GitDenn isn't code-signed yet, so your system may ask you to confirm the first run.</p>
+    <table>
+      <tr><th>Windows</th><td>Run the installer. If SmartScreen appears, choose <strong>More info → Run anyway</strong>. A portable <code>.exe</code> is also provided.</td></tr>
+      <tr><th>macOS</th><td>Open the <code>.dmg</code> and drag GitDenn to Applications. On first launch, <strong>right-click → Open</strong>. Use <code>arm64</code> for Apple silicon, <code>x64</code> for Intel.</td></tr>
+      <tr><th>Requires</th><td>Git installed and on your PATH.</td></tr>
+    </table>
+  </div></section>
+
+  <section id="source"><div class="wrap">
+    <h2>Open source</h2>
+    <p class="sub">MIT licensed. Built with Electron and plain JavaScript — no framework and no build step.</p>
+<pre><code>git clone https://github.com/morgdenn/gitdenn.git
+cd gitdenn
+npm install
+npm start</code></pre>
+    <p>Source, issues and contributing notes are on <a href="https://github.com/morgdenn/gitdenn">GitHub</a>.</p>
+  </div></section>
+</main>
+
+<footer><div class="wrap">GitDenn &middot; MIT License &middot; <a href="https://github.com/morgdenn/gitdenn">github.com/morgdenn/gitdenn</a></div></footer>
+
+<script>
+// Point the download buttons at the right file for this visitor's system. If the
+// GitHub API can't be reached, the buttons keep linking to the releases page.
+(function () {
+  var main = document.getElementById('dl-main');
+  var alt = document.getElementById('dl-alt');
+  var ver = document.getElementById('version');
+  var sys = (navigator.platform || '') + ' ' + (navigator.userAgent || '');
+  var os = /Win/i.test(sys) ? 'win' : /Mac/i.test(sys) ? 'mac' : 'other';
+
+  fetch('https://api.github.com/repos/morgdenn/gitdenn/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (rel) {
+      var a = rel.assets || [];
+      var find = function (re) { return a.find(function (x) { return re.test(x.name); }); };
+      var winSetup = find(/Setup.*\.exe$/i) || find(/\.exe$/i);
+      var winPortable = a.find(function (x) { return /\.exe$/i.test(x.name) && !/Setup/i.test(x.name); });
+      var macArm = find(/arm64\.dmg$/i), macX64 = find(/x64\.dmg$/i);
+      ver.textContent = 'Latest version: ' + (rel.tag_name || '');
+
+      function set(el, asset, label) { if (asset) { el.href = asset.browser_download_url; el.textContent = label; el.hidden = false; } }
+      if (os === 'win' && winSetup) {
+        set(main, winSetup, 'Download for Windows');
+        if (winPortable && winPortable !== winSetup) set(alt, winPortable, 'Portable .exe');
+      } else if (os === 'mac' && (macArm || macX64)) {
+        set(main, macArm || macX64, 'Download for macOS' + (macArm ? ' (Apple silicon)' : ''));
+        if (macArm && macX64) set(alt, macX64, 'macOS (Intel)');
+      } else {
+        main.textContent = 'See all downloads';
+        if (winSetup) set(alt, winSetup, 'Windows installer');
+      }
+    })
+    .catch(function () { /* keep the releases-page links */ });
+})();
+</script>
+</body>
+</html>

@@ -9,7 +9,7 @@ Two rules that must not be broken without explicit owner approval:
    `src/renderer/ui.js` helper (`html` / `raw` / `render` / `on`). No bundler,
    no framework, no `type="module"`.
 2. **Commit & push every completed feature** to `origin main` automatically
-   (private repo `github.com/morgdenn/gitdenn`) — syntax-check with
+   (`github.com/morgdenn/gitdenn`) — syntax-check with
    `node --check` first.
 
 See [AGENTS.md](AGENTS.md) for the renderer↔main boundary, UI patterns, hot
