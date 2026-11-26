@@ -312,6 +312,7 @@ body.row-resizing { cursor: row-resize; user-select: none; }
 
 #local-branches-list,
 #remote-branches-list { padding: 2px 0 8px; }
+#local-branches-list { padding-bottom: 16px; } /* breathing room above the Remote header */
 
 .branch-item {
   padding: 5px 14px;

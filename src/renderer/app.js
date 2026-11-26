@@ -557,6 +557,18 @@ function initStashSplit() {
   });
 }
 
+// When a repo is opened, grow the Local list to show every local branch (leaving
+// room for Remote). The user can still drag the divider afterwards.
+function fitLocalBranches() {
+  const group = $('local-group'), list = $('local-branches-list'), sections = $('branches-sections');
+  if (!group || !list || !sections || !sections.clientHeight) return;
+  const head = group.firstElementChild ? group.firstElementChild.offsetHeight : 0;
+  const want = head + list.scrollHeight;
+  const MIN = 48, REMOTE_MIN = 110; // keep the Remote header and a few rows visible
+  const h = Math.max(MIN, Math.min(want, sections.clientHeight - REMOTE_MIN));
+  document.documentElement.style.setProperty('--local-branches-h', Math.ceil(h) + 'px');
+}
+
 function initBranchSplit() {
   const divider = $('branch-split');
   if (!divider) return;
@@ -1016,6 +1028,7 @@ async function loadRepo(repoPath, { silent = false } = {}) {
   updateRepoLinks();
   $('branches-panel').classList.add('has-repo');
   renderBranches();
+  if (repoChanged) fitLocalBranches();
   refreshStashes();
   renderStatusChips(state.status);
   addRecentRepo(repoPath);
