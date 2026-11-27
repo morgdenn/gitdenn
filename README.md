@@ -62,7 +62,7 @@
 - **Side-by-side diff for uncommitted files** — click a changed file to open the same full-width side-by-side diff used for commits, with a **Discard** button; stage/unstage via the row buttons
 
 **UI**
-- Monokai-inspired dark theme
+- Monokai-inspired dark theme; no File/Edit/View menu bar (a small system menu on macOS), and on Windows a dark title bar that matches the toolbar. F12 or Ctrl/Cmd+Shift+I opens the developer tools
 - Resizable, collapsible sidebar panels; resizable commit-list columns
 - **Keyboard shortcuts**: `Esc` closes modals, `Cmd/Ctrl+R` refreshes, `Cmd/Ctrl+Shift+E` opens VS Code
 

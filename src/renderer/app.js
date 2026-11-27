@@ -702,6 +702,7 @@ function repoIconImg(repoPath) {
 function updateRepoTitle() {
   const el = $('repo-name-display');
   if (!el || !state.repoPath) return;
+  document.title = `${state.repoPath.split(/[\\/]/).pop()} — GitDenn`;
   el.innerHTML = repoIconImg(state.repoPath) + `<span>${escHtml(state.repoPath.split(/[\\/]/).pop())}</span>`;
 }
 

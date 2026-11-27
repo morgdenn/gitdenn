@@ -375,6 +375,7 @@ body.row-resizing { cursor: row-resize; user-select: none; }
 
 /* ─── Welcome Screen ────────────────────────────────────────────────────────── */
 #welcome-screen {
+  position: relative;
   flex: 1;
   display: flex;
   align-items: center;
@@ -547,7 +548,11 @@ body.row-resizing { cursor: row-resize; user-select: none; }
   gap: 12px;
   flex-shrink: 0;
   -webkit-app-region: drag;
+  /* Windows: keep the buttons clear of the system window controls drawn over the right edge */
+  padding-right: calc(14px + 100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
 }
+/* Draggable strip across the top of the welcome screen (it has no toolbar) */
+#welcome-screen::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: var(--toolbar-h); -webkit-app-region: drag; }
 
 #repo-name-display {
   font-weight: 600;

@@ -1,10 +1,28 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeImage, Menu } = require('electron');
 const path = require('path');
 const simpleGit = require('simple-git');
 const fs = require('fs');
 const { exec, spawn } = require('child_process');
 
 let mainWindow;
+
+// No File / Edit / View / Window / Help bar on Windows and Linux. macOS keeps a
+// small system menu (Edit is needed there for Cmd+C / Cmd+V in text boxes).
+function setupMenu() {
+  if (process.platform !== 'darwin') { Menu.setApplicationMenu(null); return; }
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    { label: app.name, submenu: [
+      { role: 'about' }, { type: 'separator' },
+      { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' },
+      { type: 'separator' }, { role: 'quit' },
+    ] },
+    { label: 'Edit', submenu: [
+      { role: 'undo' }, { role: 'redo' }, { type: 'separator' },
+      { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' },
+    ] },
+    { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'zoom' }, { role: 'close' }] },
+  ]));
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -13,7 +31,12 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     backgroundColor: '#1a1b26',
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    title: 'GitDenn',
+    autoHideMenuBar: true,
+    // macOS: traffic lights inset into the window. Windows: the app's own dark
+    // title bar with the system window buttons drawn over it in matching colours.
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : (process.platform === 'win32' ? 'hidden' : 'default'),
+    ...(process.platform === 'win32' ? { titleBarOverlay: { color: '#272822', symbolColor: '#c9c9c1', height: 43 } } : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -22,10 +45,22 @@ function createWindow() {
     icon: path.join(__dirname, '../../public/icon.png'),
   });
 
+  // The menu that carried the dev-tools shortcuts is gone, so keep F12 and
+  // Ctrl/Cmd+Shift+I for debugging.
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    const k = String(input.key).toLowerCase();
+    if (k === 'f12' || ((input.control || input.meta) && input.shift && k === 'i')) {
+      mainWindow.webContents.toggleDevTools();
+      event.preventDefault();
+    }
+  });
+
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
 }
 
 app.whenReady().then(() => {
+  setupMenu();
   createWindow();
   if (process.argv.includes('--dev')) {
     require('./dev-reload').watchForReload(() => mainWindow);
