@@ -269,6 +269,7 @@ function bindEvents() {
     if (m && !m.hidden && !e.target.closest('#stash-bar .commit-split-btn')) m.hidden = true;
   });
 
+  initOriginTip();
   $('btn-cleanup').addEventListener('click', showCleanupModal);
   $('cleanup-cancel').addEventListener('click', hideCleanupModal);
   $('cleanup-confirm').addEventListener('click', doCleanup);
@@ -1427,13 +1428,76 @@ const ICON_FILE = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height=
   <path d="M9 2v4h4" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
 </svg>`;
 // Local branch on / not on the remote: a cloud, dashed and struck through when local-only.
-const ICON_ON_ORIGIN = `<svg class="origin-icon on" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true">
-  <path d="M4.5 12.2h6.8a2.7 2.7 0 0 0 .4-5.4A3.9 3.9 0 0 0 4.2 7.5a2.35 2.35 0 0 0 .3 4.7z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
-</svg>`;
-const ICON_LOCAL_ONLY = `<svg class="origin-icon off" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true">
-  <path d="M4.5 12.2h6.8a2.7 2.7 0 0 0 .4-5.4A3.9 3.9 0 0 0 4.2 7.5a2.35 2.35 0 0 0 .3 4.7z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" stroke-dasharray="2 1.6"/>
-  <path d="M2.5 2.5l11 11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-</svg>`;
+// The cloud icon next to a local branch says where it stands relative to the
+// remote. Colour + stripe:  grey cloud = on the remote · yellow struck = local only
+// · green struck = merged · red struck = its remote branch was deleted.
+const CLOUD_PATH = 'M4.5 12.2h6.8a2.7 2.7 0 0 0 .4-5.4A3.9 3.9 0 0 0 4.2 7.5a2.35 2.35 0 0 0 .3 4.7z';
+function originIconSvg(variant, title, text) {
+  const struck = variant !== 'on';
+  return `<svg class="origin-icon ${variant}" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true" data-tip-title="${escHtml(title)}" data-tip="${escHtml(text)}">` +
+    `<path d="${CLOUD_PATH}" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"${struck ? ' stroke-dasharray="2 1.6"' : ''}/>` +
+    (struck ? '<path d="M2.5 2.5l11 11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>' : '') +
+    `</svg>`;
+}
+// Which icon (and explanation) a local branch gets.
+function originIconFor(it, bs, onRemote, remoteName) {
+  const main = state.branchStatusMain || 'the default branch';
+  const remote = remoteName || 'the remote';
+  const kind = bs && bs.kind;
+  if (kind === 'merged') {
+    const how = bs.how === 'merged'
+      ? `All of its commits are already in ${main}.`
+      : `Its changes are already in ${main} (a ${bs.how} merge).`;
+    const still = bs.gone || !bs.upstream ? '' : ` Its branch still exists on ${remote}.`;
+    return originIconSvg('merged', 'Merged', `${how} It is safe to delete.${still}`);
+  }
+  if (kind === 'gone') {
+    return originIconSvg('gone', 'Remote branch deleted',
+      `You pushed this branch, but it has since been deleted from ${remote} (usually after a pull request was merged). GitDenn can't confirm it was merged into ${main}, so check it before deleting.`);
+  }
+  if (onRemote && onRemote.has(it.value)) {
+    const extra = kind === 'ahead' ? ` It has ${bs.ahead} newer commit${bs.ahead === 1 ? '' : 's'} that ${bs.ahead === 1 ? 'is' : 'are'} not pushed yet.` : '';
+    return originIconSvg('on', `On ${remote}`, `This branch also exists on ${remote}.${extra}`);
+  }
+  const lost = bs && bs.unique > 0
+    ? `Never pushed: ${bs.unique} commit${bs.unique === 1 ? ' exists' : 's exist'} only on this computer, so deleting it would lose that work.`
+    : 'It has not been pushed, and it has no commits of its own yet.';
+  return originIconSvg('off', 'Local only', `This branch is not on ${remote}. ${lost}`);
+}
+
+// Pop-out explaining a cloud icon (shown on hover).
+function initOriginTip() {
+  const tip = document.createElement('div');
+  tip.id = 'origin-tip';
+  tip.style.display = 'none';
+  document.body.appendChild(tip);
+  const legend = [
+    ['on', 'Grey: on the remote'], ['off', 'Yellow: local only'],
+    ['merged', 'Green: merged'], ['gone', 'Red: remote deleted'],
+  ].map(([c, t]) => `<span class="ot-key"><i class="ot-dot ${c}"></i>${t}</span>`).join('');
+  document.addEventListener('mouseover', e => {
+    const ic = e.target.closest && e.target.closest('.origin-icon[data-tip]');
+    if (!ic) return;
+    tip.innerHTML = `<div class="ot-title">${escHtml(ic.getAttribute('data-tip-title'))}</div>` +
+      `<div class="ot-text">${escHtml(ic.getAttribute('data-tip'))}</div><div class="ot-legend">${legend}</div>`;
+    tip.style.display = 'block';
+    const r = ic.getBoundingClientRect();
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let left = r.right + 10;
+    if (left + w > window.innerWidth - 8) left = Math.max(8, r.left - w - 10);
+    const top = Math.max(8, Math.min(r.top - 6, window.innerHeight - h - 8));
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  });
+  document.addEventListener('mouseout', e => {
+    const ic = e.target.closest && e.target.closest('.origin-icon[data-tip]');
+    if (ic && !(e.relatedTarget && ic.contains(e.relatedTarget))) tip.style.display = 'none';
+  });
+  // The list re-renders under the cursor (and scrolls): never leave a stale pop-out behind.
+  document.addEventListener('scroll', () => { tip.style.display = 'none'; }, true);
+  document.addEventListener('mousedown', () => { tip.style.display = 'none'; }, true);
+}
+
 const ICON_CHECK = `<svg class="tree-icon" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
   <rect x="1.5" y="1.5" width="13" height="13" rx="3.5" style="fill:var(--green)"/>
   <path d="M4.6 8.2l2.1 2.2 4.7-4.9" fill="none" style="stroke:var(--bg-deep)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1486,13 +1550,9 @@ function renderBranchTree(node, opts, depth = 0) {
       const tip = [
         it.stale ? `Stale — last commit ${new Date(it.lastCommit * 1000).toLocaleDateString()} (${relativeDate(it.lastCommit)})` : '',
         opts.remote ? 'Double-click to check out locally' : '',
-        !opts.remote && opts.onRemote ? (opts.onRemote.has(it.value) ? `Also on ${opts.remoteName}` : `Local only — not pushed to ${opts.remoteName}`) : '',
-        opts.remote ? '' : branchStatusTip((state.branchStatus || {})[it.value]),
       ].filter(Boolean).join('\n');
       const title = tip ? raw(` title="${escHtml(tip)}"`) : '';
       const bsInfo = opts.remote ? null : (state.branchStatus || {})[it.value];
-      const bsText = bsInfo && { merged: 'merged', gone: 'remote gone', unpushed: 'not pushed' }[bsInfo.kind];
-      const bsChip = bsText ? html`<span class="bs-chip bs-${bsInfo.kind}">${bsText}</span>` : '';
       const track = opts.remote ? null : (state.tracking || {})[it.value];
       const ab = track && (track.ahead || track.behind) ? html`
         <span class="branch-ab">
@@ -1503,9 +1563,8 @@ function renderBranchTree(node, opts, depth = 0) {
         <div class="${cls}" data-branch="${it.value}"${title}>
           ${raw(it.current ? ICON_CHECK : ICON_BRANCH)}
           <span class="branch-name">${label}</span>
-          ${bsChip}
           ${ab}
-          ${!opts.remote && opts.onRemote ? raw(opts.onRemote.has(it.value) ? ICON_ON_ORIGIN : ICON_LOCAL_ONLY) : ''}
+          ${!opts.remote && opts.onRemote ? raw(originIconFor(it, bsInfo, opts.onRemote, opts.remoteName)) : ''}
         </div>`;
     }
     // Local folders open by default; remote folders stay folded except the

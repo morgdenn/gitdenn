@@ -1440,6 +1440,23 @@ body.col-resizing .col-resizer::after { opacity: 1; }
 .origin-icon { flex-shrink: 0; }
 .origin-icon.on { color: var(--text-muted); opacity: 0.7; }
 .origin-icon.off { color: var(--amber, #e6db74); }
+.origin-icon.merged { color: var(--green); }
+.origin-icon.gone { color: #ff5555; }
+.origin-icon { cursor: help; }
+#origin-tip {
+  position: fixed; z-index: 3000; max-width: 280px; pointer-events: none;
+  background: var(--bg-panel); border: 1px solid var(--border-lt); border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.5); padding: 10px 12px;
+  font-family: var(--font); font-size: 12px; line-height: 1.45; color: var(--text-sec);
+}
+#origin-tip .ot-title { color: var(--text-pri); font-weight: 700; margin-bottom: 4px; }
+#origin-tip .ot-legend { margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; font-size: 10.5px; color: var(--text-muted); }
+#origin-tip .ot-key { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+#origin-tip .ot-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: inline-block; }
+#origin-tip .ot-dot.on { color: var(--text-muted); }
+#origin-tip .ot-dot.off { color: var(--amber, #e6db74); }
+#origin-tip .ot-dot.merged { color: var(--green); }
+#origin-tip .ot-dot.gone { color: #ff5555; }
 
 /* No commit selected → no details panel (the graph takes the full width) */
 body.no-detail #detail-panel, body.no-detail #detail-resizer { display: none; }
@@ -1483,10 +1500,6 @@ body.no-detail #detail-panel, body.no-detail #detail-resizer { display: none; }
 #repo-name-display .org-icon { width: 18px; height: 18px; flex-shrink: 0; border-radius: 4px; object-fit: cover; }
 
 /* ─── Local branch status chips + Clean up ─────────────────────────────────── */
-.bs-chip { flex-shrink: 0; font-size: 9px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; padding: 1px 5px; border-radius: 8px; border: 1px solid; margin-left: 4px; }
-.bs-merged   { color: var(--green); border-color: rgba(166,226,46,.5); background: rgba(166,226,46,.10); }
-.bs-gone     { color: var(--amber); border-color: rgba(230,219,116,.5); background: rgba(230,219,116,.10); }
-.bs-unpushed { color: var(--pink);  border-color: rgba(249,38,114,.55); background: rgba(249,38,114,.12); }
 .cleanup-btn { margin-left: auto; background: none; border: 1px solid var(--border-lt); border-radius: 10px; color: var(--text-sec); font-family: var(--font); font-size: 10px; padding: 1px 8px; cursor: pointer; text-transform: none; letter-spacing: 0; }
 .cleanup-btn:hover { color: var(--text-pri); background: var(--bg-hover); }
 .cleanup-note { font-size: 12px; color: var(--text-muted); margin: 0 0 8px; }
