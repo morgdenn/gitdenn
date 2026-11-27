@@ -258,13 +258,6 @@
         <div id="toolbar">
           <div id="repo-name-display"></div>
           <div id="toolbar-actions">
-            <button class="toolbar-btn" id="btn-fetch" title="Fetch all remotes">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M7 1v6M4 4l3-3 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M2 9v3h10V9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              Fetch
-            </button>
             <button class="toolbar-btn" id="btn-branch" title="Create a new branch">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                 <circle cx="4.5" cy="3.5" r="1.6" stroke="currentColor" stroke-width="1.3"/>
@@ -431,6 +424,8 @@
 
   <!-- Repo context menu -->
   <div id="repo-ctx-menu" class="ctx-menu" style="display:none;">
+    <button class="ctx-menu-item" id="ctx-repo-fetch" title="Download new commits from all remotes (nothing in your files changes)">Fetch</button>
+    <div class="ctx-menu-separator"></div>
     <button class="ctx-menu-item" id="ctx-repo-remove" title="Take it off this list; the folder stays on disk">Remove from list</button>
     <div class="ctx-menu-separator"></div>
     <button class="ctx-menu-item danger" id="ctx-repo-delete" title="Move the folder to the Recycle Bin / Trash">Delete from disk…</button>

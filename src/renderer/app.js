@@ -130,7 +130,6 @@ function bindEvents() {
   $('clone-browse').addEventListener('click', browseDestination);
   $('clone-confirm').addEventListener('click', doClone);
 
-  $('btn-fetch').addEventListener('click', doFetch);
 
   $('btn-branch').addEventListener('click', showBranchModal);
   $('btn-pull').addEventListener('click', doPull);
@@ -623,13 +622,14 @@ function toggleRepoSort() {
 
 // ─── Repos list: right-click → remove / delete ────────────────────────────────
 function showRepoCtxMenu(x, y, repoPath) {
+  $('ctx-repo-fetch').onclick = () => { hideRepoCtxMenu(); fetchRepo(repoPath); };
   $('ctx-repo-remove').onclick = () => { hideRepoCtxMenu(); removeRepoFromList(repoPath); };
   $('ctx-repo-delete').onclick = () => { hideRepoCtxMenu(); deleteRepoFromDisk(repoPath); };
   const menu = $('repo-ctx-menu');
   menu.style.display = 'block';
   const vw = window.innerWidth, vh = window.innerHeight;
   menu.style.left = (x + 190 > vw ? vw - 194 : x) + 'px';
-  menu.style.top  = (y + 90 > vh ? vh - 94 : y) + 'px';
+  menu.style.top  = (y + 120 > vh ? vh - 124 : y) + 'px';
 }
 function hideRepoCtxMenu() {
   const m = $('repo-ctx-menu');
@@ -3068,16 +3068,18 @@ async function doPush(force = false) {
   await loadRepo(state.repoPath);
 }
 
-async function doFetch() {
-  if (!state.repoPath) return;
-  const btn = $('btn-fetch');
-  btn.disabled = true;
-  btn.textContent = 'Fetching…';
-  const result = await window.gitApp.fetch(state.repoPath);
-  btn.disabled = false;
-  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v6M4 4l3-3 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 9v3h10V9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Fetch`;
-  if (result.success) await loadRepo(state.repoPath);
-  else alert(`Fetch failed: ${result.error}`);
+// Fetch all remotes of a repo (from the Repos list right-click menu).
+async function fetchRepo(repoPath) {
+  if (!repoPath) return;
+  const r = state.recentRepos.find(x => x.path === repoPath);
+  const name = r ? r.name : repoPath.split(/[\/]/).pop();
+  const overlay = state.repoPath === repoPath ? showLoading('Fetching…') : null;
+  showToast(`Fetching ${name}…`);
+  const result = await window.gitApp.fetch(repoPath);
+  if (overlay) overlay.remove();
+  if (!result.success) { alert(`Fetch failed: ${result.error}`); return; }
+  showToast(`Fetched ${name}`);
+  if (state.repoPath === repoPath) await loadRepo(repoPath);
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────

@@ -52,7 +52,7 @@
 - **Fast commit push** button pinned to the bottom of the right panel (away from Commit): stages all changes, generates a message, commits and pushes in one click
 - Right-click a local branch to **Pull branch** (fast-forwards it even if it isn't checked out), copy its name, rename, or delete
 - Double-click a remote branch to check it out locally; double-click a local branch to switch
-- **Create a branch**, **fetch**, **pull**, and **push** (auto-sets upstream) from the toolbar
+- **Create a branch**, **pull**, and **push** (auto-sets upstream) from the toolbar; **Fetch** is in the right-click menu of a repo in the Repos list
 
 **Working directory (uncommitted changes)**
 - A **WIP node** at the top of the graph for uncommitted changes, refreshed automatically
