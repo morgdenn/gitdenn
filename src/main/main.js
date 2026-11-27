@@ -995,14 +995,22 @@ ipcMain.handle('git:branchStatus', async (event, { repoPath }) => {
     }
     const mainSha = mainRef ? (await gitExit(repoPath, ['rev-parse', mainRef])).out : null;
 
+    // Commits on the default branch's first-parent line (computed once, only if needed).
+    let trunkP = null;
+    const trunk = () => trunkP || (trunkP = gitExit(repoPath, ['rev-list', '--first-parent', '-n', '20000', mainRef])
+      .then(r => new Set(r.out.split(/\r?\n/).filter(Boolean))));
+
     const statuses = {};
     const work = branches.filter(b => b.name !== defaultBranch);
     const examine = async b => {
       const unique = parseInt((await gitExit(repoPath, ['rev-list', '--count', b.name, '--not', '--remotes'])).out, 10) || 0;
       let how = null;
       if (mainRef && b.sha !== mainSha) {
-        if ((await gitExit(repoPath, ['merge-base', '--is-ancestor', b.name, mainRef])).code === 0) how = 'merged';
-        else {
+        if ((await gitExit(repoPath, ['merge-base', '--is-ancestor', b.name, mainRef])).code === 0) {
+          // Sitting on the default branch's own line of commits and never pushed means a
+          // branch that was just created and has no work of its own yet - not a merged one.
+          how = (!b.upstream && (await trunk()).has(b.sha)) ? null : 'merged';
+        } else {
           // Rebase merge: every commit of the branch has an equivalent (same patch) in main.
           const ch = (await gitExit(repoPath, ['cherry', mainRef, b.name])).out.split(/\r?\n/).filter(Boolean);
           if (ch.length && ch.every(l => l.startsWith('-'))) how = 'rebased';
