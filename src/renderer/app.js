@@ -1067,7 +1067,7 @@ async function loadRepo(repoPath, { silent = false } = {}) {
   // Prepend a synthetic "WIP" commit for uncommitted changes, linked to HEAD.
   const changed = state.status.changed || 0;
   state.commits = (changed > 0 && state.head)
-    ? [buildWipCommit(changed), ...result.commits]
+    ? [buildWipCommit(changed, state.status), ...result.commits]
     : result.commits;
 
   // Refresh the right-hand detail panel: a different repo (or a selection that
@@ -1089,7 +1089,6 @@ async function loadRepo(repoPath, { silent = false } = {}) {
   if (repoChanged) fitLocalBranches();
   refreshBranchStatus();
   refreshStashes();
-  renderStatusChips(state.status);
   addRecentRepo(repoPath);
   renderRecentRepos();
 
@@ -1113,7 +1112,7 @@ function resetDetailPanel() {
 }
 
 // A synthetic "WIP" commit representing uncommitted changes, linked to HEAD.
-function buildWipCommit(changed) {
+function buildWipCommit(changed, counts) {
   return {
     sha: '__WIP__',
     parents: state.head ? [state.head] : [],
@@ -1124,6 +1123,7 @@ function buildWipCommit(changed) {
     refs: [],
     shortSha: '',
     isWip: true,
+    counts: counts || {},
   };
 }
 
@@ -1143,11 +1143,10 @@ async function refreshWorkingState() {
   if (sig === state.statusSig) return; // nothing changed → no work
   state.statusSig = sig;
   state.status = res.counts;
-  renderStatusChips(res.counts);
 
   const changed = res.counts.changed || 0;
   state.commits = (changed > 0 && state.head)
-    ? [buildWipCommit(changed), ...state.realCommits]
+    ? [buildWipCommit(changed, res.counts), ...state.realCommits]
     : state.realCommits;
 
   const scrollTop = graphScroll.scrollTop;
@@ -1663,13 +1662,12 @@ async function doDeleteBranch(branch) {
   await loadRepo(state.repoPath);
 }
 
-function renderStatusChips(status) {
-  const mod = $('chip-modified');
-  const stg = $('chip-staged');
-  const unt = $('chip-untracked');
-  if (status.modified > 0) { mod.textContent = `${status.modified} modified`; mod.style.display = 'inline'; } else mod.style.display = 'none';
-  if (status.staged > 0)   { stg.textContent = `${status.staged} staged`;   stg.style.display = 'inline'; } else stg.style.display = 'none';
-  if (status.untracked > 0) { unt.textContent = `${status.untracked} untracked`; unt.style.display = 'inline'; } else unt.style.display = 'none';
+// "3 modified · 2 staged · 5 untracked" chips shown after the subject of the
+// Uncommitted changes row in the graph.
+function wipChips(c) {
+  c = c || {};
+  const chip = (n, cls, label) => n > 0 ? html`<span class="chip ${cls}">${n} ${label}</span>` : '';
+  return html`<span class="wip-chips">${chip(c.modified, 'modified', 'modified')}${chip(c.staged, 'staged', 'staged')}${chip(c.untracked, 'untracked', 'untracked')}</span>`;
 }
 
 // ─── Graph Layout Engine ──────────────────────────────────────────────────────
@@ -1845,7 +1843,7 @@ function renderCommitRows(graphData) {
         <div class="commit-row wip ${selected}" data-sha="${commit.sha}" data-idx="${i}"${tint}>
           <div class="commit-branch"></div>
           <div class="commit-graph-cell"></div>
-          <div class="commit-msg"><span class="msg-text">${commit.subject}</span></div>
+          <div class="commit-msg"><span class="msg-text">${commit.subject}</span>${wipChips(commit.counts)}</div>
           <div class="commit-author"></div>
           <div class="commit-date"></div>
           <div class="commit-sha"></div>
@@ -2710,8 +2708,7 @@ async function refreshStatus() {
   const res = await window.gitApp.status(state.repoPath);
   if (res.success) {
     state.status = res.counts;
-    renderStatusChips(res.counts);
-  }
+    }
   await renderWipDetail();
 }
 

@@ -585,8 +585,7 @@ body.row-resizing { cursor: row-resize; user-select: none; }
 .toolbar-btn:hover,
 .toolbar-btn.has-unpushed { background: var(--bg-hover); color: var(--text-pri); border-color: var(--accent); }
 
-#status-chips { display: flex; gap: 6px; margin-left: auto; -webkit-app-region: no-drag; }
-#toolbar-right { display: flex; gap: 6px; margin-left: 10px; -webkit-app-region: no-drag; }
+#toolbar-right { display: flex; gap: 6px; margin-left: auto; -webkit-app-region: no-drag; }
 .chip {
   padding: 2px 8px;
   border-radius: 10px;
@@ -596,6 +595,8 @@ body.row-resizing { cursor: row-resize; user-select: none; }
 .chip.modified { background: rgba(230,219,116,0.15); color: var(--amber); }
 .chip.staged   { background: rgba(166,226,46,0.15); color: var(--green); }
 .chip.untracked { background: rgba(201,201,193,0.13); color: var(--text-sec); }
+.wip-chips { display: inline-flex; gap: 6px; flex-shrink: 0; margin-left: 4px; }
+.wip-chips .chip { white-space: nowrap; font-style: normal; }
 
 /* ─── Content Area ──────────────────────────────────────────────────────────── */
 #content-area {
