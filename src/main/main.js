@@ -1084,8 +1084,13 @@ ipcMain.handle('git:refs', async (event, { repoPath, fetch }) => {
   try {
     const git = simpleGit(repoPath);
     if (fetch) {
-      try { await git.env({ ...process.env, GIT_TERMINAL_PROMPT: '0' }).fetch(['--all', '--prune']); }
-      catch (e) { /* offline / auth failure: still report local refs */ }
+      // Background fetch: never prompt for a login (terminal or Git Credential Manager
+      // window) and give up if the remote goes quiet for 30s.
+      try {
+        await simpleGit({ baseDir: repoPath, timeout: { block: 30000 } })
+          .env({ ...process.env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' })
+          .fetch(['--all', '--prune']);
+      } catch (e) { /* offline / auth failure / timeout: still report local refs */ }
     }
     const { tracking, branchShas, branchDates, defaultBranch } = await readRefInfo(git);
     return { success: true, tracking, branchShas, branchDates, defaultBranch };

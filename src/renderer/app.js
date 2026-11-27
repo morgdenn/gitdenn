@@ -1088,6 +1088,7 @@ async function loadRepo(repoPath, { silent = false } = {}) {
   renderBranches();
   if (repoChanged) fitLocalBranches();
   refreshBranchStatus();
+  if (repoChanged) fetchOnOpen(repoPath);
   refreshStashes();
   addRecentRepo(repoPath);
   renderRecentRepos();
@@ -1181,6 +1182,23 @@ async function refreshRefs(fetch) {
   } finally {
     refsBusy = false;
   }
+}
+
+// Fetch once, quietly, right after a repo is opened so ahead/behind and the branch
+// cloud icons are not stale until the next 60s fetch. Runs after the graph is
+// already on screen, never prompts for a login, and is skipped if the same repo
+// was fetched in the last 30 seconds (quick switching between repos).
+const _openFetchAt = {};
+function fetchOnOpen(repo, tries = 0) {
+  if (tries === 0) {
+    if (Date.now() - (_openFetchAt[repo] || 0) < 30000) return;
+    _openFetchAt[repo] = Date.now();
+  }
+  setTimeout(() => {
+    if (state.repoPath !== repo) return;            // user moved on
+    if (refsBusy && tries < 5) return fetchOnOpen(repo, tries + 1); // another refresh is running: try again shortly
+    refreshRefs(true);
+  }, tries === 0 ? 300 : 1000);
 }
 
 function showLoading(text) {

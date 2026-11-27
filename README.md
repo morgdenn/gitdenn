@@ -33,7 +33,7 @@
 
 **Branches**
 - Sidebar **branch tree** grouped by `/`, split into Local / Remote (resizable divider)
-- **Ahead/behind** indicators vs. upstream (`N↑` / `N↓`), kept live: local refs re-checked every 5s and a background `git fetch` every 60s
+- **Ahead/behind** indicators vs. upstream (`N↑` / `N↓`), kept live: local refs re-checked every 5s and a background `git fetch` every 60s; a quiet fetch also runs once right after a repo is opened (never prompts for a login, 30s timeout)
 - **Stale branches** (no commits for 3+ months — GitHub's own definition, computed locally from each branch tip's commit date) are dimmed in the branch lists; a **Hide/Show stale (N)** button in the panel header toggles them (remembered)
 - **Unpushed commits highlight Push**: when the current branch is ahead of its remote, the toolbar Push button stays in its hover (highlighted) state and its tooltip shows the count; likewise Pull is highlighted when the remote has commits to pull down
 - **Push goes straight through**; the force-push dialog only appears if the remote rejected the push (it has commits you don't)
