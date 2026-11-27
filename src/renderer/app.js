@@ -3072,7 +3072,7 @@ async function doPush(force = false) {
 async function fetchRepo(repoPath) {
   if (!repoPath) return;
   const r = state.recentRepos.find(x => x.path === repoPath);
-  const name = r ? r.name : repoPath.split(/[\/]/).pop();
+  const name = r ? r.name : repoPath.split(/[\\/]/).pop();
   const overlay = state.repoPath === repoPath ? showLoading('Fetching…') : null;
   showToast(`Fetching ${name}…`);
   const result = await window.gitApp.fetch(repoPath);
