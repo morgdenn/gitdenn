@@ -1498,14 +1498,3 @@ body.no-detail #detail-panel, body.no-detail #detail-resizer { display: none; }
 /* Repo icon next to the repo name in the toolbar (same icon as the Repos list) */
 #repo-name-display { display: flex; align-items: center; gap: 8px; }
 #repo-name-display .org-icon { width: 18px; height: 18px; flex-shrink: 0; border-radius: 4px; object-fit: cover; }
-
-/* ─── Local branch status chips + Clean up ─────────────────────────────────── */
-.cleanup-btn { margin-left: auto; background: none; border: 1px solid var(--border-lt); border-radius: 10px; color: var(--text-sec); font-family: var(--font); font-size: 10px; padding: 1px 8px; cursor: pointer; text-transform: none; letter-spacing: 0; }
-.cleanup-btn:hover { color: var(--text-pri); background: var(--bg-hover); }
-.cleanup-note { font-size: 12px; color: var(--text-muted); margin: 0 0 8px; }
-.cleanup-list { display: flex; flex-direction: column; gap: 2px; max-height: 300px; overflow-y: auto; }
-.cleanup-row { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 5px; font-size: 12px; cursor: pointer; text-transform: none; letter-spacing: 0; }
-.cleanup-row:hover { background: var(--bg-hover); }
-.cleanup-row input { margin: 0; }
-.cleanup-row .cu-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-pri); }
-.cleanup-row .cu-why { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
