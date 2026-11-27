@@ -1472,3 +1472,7 @@ body.no-detail #detail-panel, body.no-detail #detail-resizer { display: none; }
 
 /* Double-clicking a branch checks it out; don't select its text */
 .branch-item, .branch-remote, .ref-badge { -webkit-user-select: none; user-select: none; }
+
+/* Repo icon next to the repo name in the toolbar (same icon as the Repos list) */
+#repo-name-display { display: flex; align-items: center; gap: 8px; }
+#repo-name-display .org-icon { width: 18px; height: 18px; flex-shrink: 0; border-radius: 4px; object-fit: cover; }

@@ -668,20 +668,11 @@ function renderRecentRepos() {
     list.innerHTML = '<div class="empty-sidebar">No repos yet</div>';
     return;
   }
-  const icons = loadOrgIcons();
-  const projIcons = loadProjectIcons();
   const sorted = repoSortMode() === 'alpha'
     ? [...state.recentRepos].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
     : state.recentRepos; // already most-recent-first
   list.innerHTML = sorted.map((r, i) => {
-    // A logo/favicon found inside the project wins over the GitHub owner avatar.
-    const pi = projIcons[r.path];
-    const ic = icons[r.path];
-    const img = pi && pi.icon
-      ? `<img class="org-icon" src="${escHtml(pi.icon)}" alt="" title="${escHtml(pi.file || 'Project icon')}">`
-      : (ic && ic.icon
-        ? `<img class="org-icon" src="${escHtml(ic.icon)}" alt="" title="${escHtml(ic.org)}">`
-        : '');
+    const img = repoIconImg(r.path);
     return `
     <div class="repo-item ${state.repoPath === r.path ? 'active' : ''}"
          data-path="${escHtml(r.path)}"
@@ -693,7 +684,25 @@ function renderRecentRepos() {
   list.querySelectorAll('.repo-item').forEach(el => {
     el.addEventListener('click', () => loadRepo(el.dataset.path));
   });
+  updateRepoTitle();
   refreshOrgIcons();
+}
+
+// The repo's icon as an <img> (or ''): a logo/favicon found inside the project wins
+// over the GitHub owner's avatar. Used in the Repos list and the toolbar title.
+function repoIconImg(repoPath) {
+  const pi = loadProjectIcons()[repoPath];
+  const ic = loadOrgIcons()[repoPath];
+  if (pi && pi.icon) return `<img class="org-icon" src="${escHtml(pi.icon)}" alt="" title="${escHtml(pi.file || 'Project icon')}">`;
+  if (ic && ic.icon) return `<img class="org-icon" src="${escHtml(ic.icon)}" alt="" title="${escHtml(ic.org)}">`;
+  return '';
+}
+
+// Repo name (with its icon) at the top of the toolbar.
+function updateRepoTitle() {
+  const el = $('repo-name-display');
+  if (!el || !state.repoPath) return;
+  el.innerHTML = repoIconImg(state.repoPath) + `<span>${escHtml(state.repoPath.split(/[\\/]/).pop())}</span>`;
 }
 
 // Icons for repos in the list, in priority order:
@@ -1070,8 +1079,7 @@ async function loadRepo(repoPath, { silent = false } = {}) {
   }
 
   // Update toolbar
-  const repoName = repoPath.split(/[\\/]/).pop();
-  $('repo-name-display').textContent = repoName;
+  updateRepoTitle();
   updateRepoLinks();
   $('branches-panel').classList.add('has-repo');
   renderBranches();

@@ -17,7 +17,7 @@
 **Repository**
 - **Clone** any public or private Git repo via URL (with progress)
 - **Open** existing local repositories
-- **Recent repos** list (persisted in localStorage) — each repo gets a small icon: a logo/favicon file found in the project itself if there is one, otherwise the GitHub owner's avatar (organisation logo or personal profile picture)
+- **Recent repos** list (persisted in localStorage) — each repo gets a small icon: a logo/favicon file found in the project itself if there is one, otherwise the GitHub owner's avatar (organisation logo or personal profile picture); the same icon is shown beside the repo name in the toolbar
 - **Open in GitHub** (when the remote is on GitHub) and **Open in VS Code**
 
 **Commit graph**
