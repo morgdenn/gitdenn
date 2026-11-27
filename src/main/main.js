@@ -862,6 +862,25 @@ ipcMain.handle('shell:openInVscode', async (event, { repoPath }) => {
   });
 });
 
+// Move a repo's folder to the Recycle Bin / Trash (recoverable). Refuses anything
+// that is not clearly a git working copy, and never a drive root or home folder.
+ipcMain.handle('repo:trash', async (event, { repoPath }) => {
+  try {
+    if (typeof repoPath !== 'string' || !path.isAbsolute(repoPath)) return { success: false, error: 'Invalid path.' };
+    const target = path.resolve(repoPath);
+    const os = require('os');
+    if (target === path.parse(target).root || target === path.resolve(os.homedir())) {
+      return { success: false, error: 'Refusing to delete that folder.' };
+    }
+    if (!fs.existsSync(target)) return { success: true, missing: true }; // already gone
+    if (!fs.existsSync(path.join(target, '.git'))) return { success: false, error: 'That folder is not a git repository, so it was not deleted.' };
+    await shell.trashItem(target);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Show the repo folder in the OS file manager (Explorer / Finder / ...).
 ipcMain.handle('shell:openExplorer', async (event, { repoPath }) => {
   const err = await shell.openPath(repoPath);

@@ -429,6 +429,13 @@
     <button class="ctx-menu-item danger" id="ctx-delete-branch">Delete branch</button>
   </div>
 
+  <!-- Repo context menu -->
+  <div id="repo-ctx-menu" class="ctx-menu" style="display:none;">
+    <button class="ctx-menu-item" id="ctx-repo-remove" title="Take it off this list; the folder stays on disk">Remove from list</button>
+    <div class="ctx-menu-separator"></div>
+    <button class="ctx-menu-item danger" id="ctx-repo-delete" title="Move the folder to the Recycle Bin / Trash">Delete from disk…</button>
+  </div>
+
   <!-- Stash context menu -->
   <div id="stash-ctx-menu" class="ctx-menu" style="display:none;">
     <button class="ctx-menu-item" id="ctx-stash-apply">Apply stash</button>

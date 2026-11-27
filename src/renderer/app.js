@@ -317,8 +317,15 @@ function bindEvents() {
     showFileCtxMenu(e.clientX, e.clientY, el.dataset.dir, { stash: !!el.closest('.wd'), dir: true });
   });
 
+  // Right-click a repo in the Repos list → remove from the list, or delete it
+  on('recent-repos-list', 'contextmenu', '.repo-item', (el, e) => {
+    e.preventDefault();
+    showRepoCtxMenu(e.clientX, e.clientY, el.dataset.path);
+  });
+
   // Close context menu on any click outside it
   document.addEventListener('click', e => {
+    if (!e.target.closest('#repo-ctx-menu')) hideRepoCtxMenu();
     if (!e.target.closest('#file-ctx-menu')) hideFileCtxMenu();
     if (!e.target.closest('#branch-ctx-menu')) hideBranchCtxMenu();
     if (!e.target.closest('#stash-ctx-menu')) hideStashCtxMenu();
@@ -612,6 +619,46 @@ function updateRepoSortButton() {
 function toggleRepoSort() {
   try { localStorage.setItem('repoSort', repoSortMode() === 'alpha' ? 'recent' : 'alpha'); } catch (e) {}
   renderRecentRepos();
+}
+
+// ─── Repos list: right-click → remove / delete ────────────────────────────────
+function showRepoCtxMenu(x, y, repoPath) {
+  $('ctx-repo-remove').onclick = () => { hideRepoCtxMenu(); removeRepoFromList(repoPath); };
+  $('ctx-repo-delete').onclick = () => { hideRepoCtxMenu(); deleteRepoFromDisk(repoPath); };
+  const menu = $('repo-ctx-menu');
+  menu.style.display = 'block';
+  const vw = window.innerWidth, vh = window.innerHeight;
+  menu.style.left = (x + 190 > vw ? vw - 194 : x) + 'px';
+  menu.style.top  = (y + 90 > vh ? vh - 94 : y) + 'px';
+}
+function hideRepoCtxMenu() {
+  const m = $('repo-ctx-menu');
+  if (m) m.style.display = 'none';
+}
+function forgetRepo(repoPath) {
+  state.recentRepos = state.recentRepos.filter(r => r.path !== repoPath);
+  try { localStorage.setItem('recentRepos', JSON.stringify(state.recentRepos)); } catch (e) { /* ignore */ }
+  renderRecentRepos();
+}
+function removeRepoFromList(repoPath) {
+  const r = state.recentRepos.find(x => x.path === repoPath);
+  forgetRepo(repoPath);
+  showToast(`Removed ${r ? r.name : 'repo'} from the list (the folder is untouched)`);
+}
+async function deleteRepoFromDisk(repoPath) {
+  const r = state.recentRepos.find(x => x.path === repoPath);
+  const name = r ? r.name : repoPath;
+  if (!confirm(`Delete "${name}" from disk?
+
+${repoPath}
+
+The whole folder, including any uncommitted work, is moved to the Recycle Bin / Trash.`)) return;
+  const res = await window.gitApp.trashRepo(repoPath);
+  if (!res.success) { alert(`Could not delete: ${res.error}`); return; }
+  const wasOpen = state.repoPath === repoPath;
+  forgetRepo(repoPath);
+  showToast(`Moved ${name} to the Recycle Bin`);
+  if (wasOpen) setTimeout(() => location.reload(), 600); // reopens the next repo in the list, if any
 }
 
 function renderRecentRepos() {
