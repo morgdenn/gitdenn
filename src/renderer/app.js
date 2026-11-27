@@ -1839,15 +1839,14 @@ function renderCommitRows(graphData) {
     const lineX = LANE_PAD + row.lane * COL_W + COL_W / 2;
     const tint = raw(` style="--lane-tint: color-mix(in srgb, ${rowColor(row)} 12%, transparent); --line-x: ${lineX}px"`);
     if (commit.isWip) {
+      // No author / date / SHA / tag cells: the message cell takes the whole rest of the row.
       return html`
         <div class="commit-row wip ${selected}" data-sha="${commit.sha}" data-idx="${i}"${tint}>
           <div class="commit-branch"></div>
           <div class="commit-graph-cell"></div>
-          <div class="commit-msg"><span class="msg-text">${commit.subject}</span>${wipChips(commit.counts)}</div>
-          <div class="commit-author"></div>
-          <div class="commit-date"></div>
-          <div class="commit-sha"></div>
-          <div class="commit-tags"></div>
+          <div class="commit-msg">
+            <span class="msg-text">${commit.subject}</span>${wipChips(commit.counts)}
+          </div>
         </div>
       `;
     }
