@@ -4,6 +4,7 @@
   "description": "A desktop Git client built with Electron",
   "main": "src/main/main.js",
   "author": "Morgan Denn",
+  "homepage": "https://gitdenn.com",
   "license": "MIT",
   "repository": {
     "type": "git",

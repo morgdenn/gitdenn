@@ -6,6 +6,8 @@
 
 <p align="center">Built with Electron + simple-git. Visualizes commit history as an interactive branch graph.</p>
 
+<p align="center"><a href="https://gitdenn.com"><strong>gitdenn.com</strong></a> — download for Windows and macOS</p>
+
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-a6e22e.svg"></a>
   <img alt="Electron 28" src="https://img.shields.io/badge/Electron-28-66d9ef.svg">
