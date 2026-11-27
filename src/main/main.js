@@ -960,6 +960,84 @@ ipcMain.handle('git:renameBranch', async (event, { repoPath, oldName, newName })
 });
 
 // Delete a local branch (must not be currently checked out)
+// ─── Local branch status: is it safe to delete? ───────────────────────────────
+// Run git and report the exit code instead of throwing (exit 1 is a normal "no").
+function gitExit(repoPath, args) {
+  const env = { ...process.env, GIT_AUTHOR_NAME: 'gitdenn', GIT_AUTHOR_EMAIL: 'gitdenn@localhost', GIT_COMMITTER_NAME: 'gitdenn', GIT_COMMITTER_EMAIL: 'gitdenn@localhost' };
+  return new Promise(resolve => {
+    require('child_process').execFile('git', args, { cwd: repoPath, env, windowsHide: true, maxBuffer: 16 * 1024 * 1024 },
+      (err, stdout) => resolve({ code: err ? (typeof err.code === 'number' ? err.code : 1) : 0, out: String(stdout || '').trim() }));
+  });
+}
+
+// Classifies each local branch using only local git data (no network, no login):
+//   merged   - its work is already in the default branch (merge, rebase or squash)
+//   gone     - it was pushed, the remote branch has since been deleted, and we can't
+//              prove it was merged (review it before deleting)
+//   unpushed - never pushed and has commits that exist nowhere else
+//   ahead    - pushed, but has newer local commits
+ipcMain.handle('git:branchStatus', async (event, { repoPath }) => {
+  try {
+    const git = simpleGit(repoPath);
+    const raw = await git.raw(['for-each-ref', '--format=%(refname:short)%09%(objectname)%09%(upstream:short)%09%(upstream:track)', 'refs/heads']);
+    const branches = raw.split(/\r?\n/).filter(Boolean).map(line => {
+      const [name, sha, upstream, track] = line.split('\t');
+      const ahead = /ahead (\d+)/.exec(track || '');
+      return { name, sha, upstream: upstream || '', gone: /gone/.test(track || ''), ahead: ahead ? +ahead[1] : 0 };
+    });
+
+    const { defaultBranch } = await readRefInfo(git);
+    let mainRef = null;
+    if (defaultBranch) {
+      for (const ref of [`refs/remotes/origin/${defaultBranch}`, `refs/heads/${defaultBranch}`]) {
+        if ((await gitExit(repoPath, ['rev-parse', '--verify', '-q', ref])).code === 0) { mainRef = ref; break; }
+      }
+    }
+    const mainSha = mainRef ? (await gitExit(repoPath, ['rev-parse', mainRef])).out : null;
+
+    const statuses = {};
+    const work = branches.filter(b => b.name !== defaultBranch);
+    const examine = async b => {
+      const unique = parseInt((await gitExit(repoPath, ['rev-list', '--count', b.name, '--not', '--remotes'])).out, 10) || 0;
+      let how = null;
+      if (mainRef && b.sha !== mainSha) {
+        if ((await gitExit(repoPath, ['merge-base', '--is-ancestor', b.name, mainRef])).code === 0) how = 'merged';
+        else {
+          // Rebase merge: every commit of the branch has an equivalent (same patch) in main.
+          const ch = (await gitExit(repoPath, ['cherry', mainRef, b.name])).out.split(/\r?\n/).filter(Boolean);
+          if (ch.length && ch.every(l => l.startsWith('-'))) how = 'rebased';
+          else {
+            // Squash merge: the branch's whole change, as one commit, matches a commit in main.
+            const base = (await gitExit(repoPath, ['merge-base', mainRef, b.name])).out;
+            const tree = (await gitExit(repoPath, ['rev-parse', `${b.name}^{tree}`])).out;
+            if (base && tree) {
+              const tmp = await gitExit(repoPath, ['commit-tree', tree, '-p', base, '-m', 'gitdenn-check']);
+              if (tmp.code === 0 && tmp.out) {
+                const c = (await gitExit(repoPath, ['cherry', mainRef, tmp.out])).out;
+                if (c.startsWith('-')) how = 'squashed';
+              }
+            }
+          }
+        }
+      }
+      let kind = null;
+      if (how) kind = 'merged';
+      else if (b.gone) kind = 'gone';
+      else if (!b.upstream && unique > 0) kind = 'unpushed';
+      else if (b.ahead > 0) kind = 'ahead';
+      statuses[b.name] = { kind, how, upstream: b.upstream, gone: b.gone, ahead: b.ahead, unique };
+    };
+    // A few at a time: each branch costs several quick git calls.
+    let next = 0;
+    await Promise.all(Array.from({ length: 6 }, async () => {
+      while (next < work.length) { const b = work[next++]; try { await examine(b); } catch (e) { /* skip this branch */ } }
+    }));
+    return { success: true, mainRef: mainRef ? mainRef.replace(/^refs\/(heads|remotes)\//, '') : null, statuses };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle('git:deleteBranch', async (event, { repoPath, name }) => {
   try {
     const git = simpleGit(repoPath);

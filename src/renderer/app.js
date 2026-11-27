@@ -189,7 +189,7 @@ function bindEvents() {
     }
   });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); hideRebaseModal(); hideSquashModal(); hideStashModal(); closeFileDiff(); { const m = $('open-with-menu'); if (m) m.hidden = true; } hideBranchCtxMenu(); hideCommitCtxMenu(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
+    if (e.key === 'Escape') { hideCloneModal(); hideBranchModal(); hidePushModal(); hideRebaseModal(); hideSquashModal(); hideStashModal(); hideCleanupModal(); closeFileDiff(); { const m = $('open-with-menu'); if (m) m.hidden = true; } hideBranchCtxMenu(); hideCommitCtxMenu(); const dd = $('commit-dropdown'); if (dd) dd.hidden = true; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'r') loadRepo(state.repoPath);
     // Ctrl/Cmd+Shift+E → open the repo in VS Code
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'e' || e.key === 'E')) {
@@ -268,6 +268,10 @@ function bindEvents() {
     const m = $('stash-bar-menu');
     if (m && !m.hidden && !e.target.closest('#stash-bar .commit-split-btn')) m.hidden = true;
   });
+
+  $('btn-cleanup').addEventListener('click', showCleanupModal);
+  $('cleanup-cancel').addEventListener('click', hideCleanupModal);
+  $('cleanup-confirm').addEventListener('click', doCleanup);
 
   $('squash-cancel').addEventListener('click', hideSquashModal);
   $('squash-cancel-2').addEventListener('click', hideSquashModal);
@@ -1083,8 +1087,10 @@ async function loadRepo(repoPath, { silent = false } = {}) {
   updateRepoTitle();
   updateRepoLinks();
   $('branches-panel').classList.add('has-repo');
+  if (repoChanged) state.branchStatus = {};
   renderBranches();
   if (repoChanged) fitLocalBranches();
+  refreshBranchStatus();
   refreshStashes();
   renderStatusChips(state.status);
   addRecentRepo(repoPath);
@@ -1303,6 +1309,85 @@ function renderBranches() {
   render('remote-branches-list', remotes.length
     ? renderBranchTree(buildBranchTree(remoteItems), { remote: true, hideStale })
     : html`<div class="empty-sidebar">No remote branches</div>`);
+  updateCleanupButton();
+}
+
+// ─── Local branch status (merged / remote gone / not pushed) + Clean up ───────
+let _bsToken = 0;
+async function refreshBranchStatus() {
+  if (!state.repoPath) return;
+  const repo = state.repoPath, tok = ++_bsToken;
+  const res = await window.gitApp.branchStatus(repo);
+  if (tok !== _bsToken || repo !== state.repoPath) return; // a newer refresh or another repo took over
+  state.branchStatus = res.success ? res.statuses : {};
+  state.branchStatusMain = res.success ? res.mainRef : null;
+  renderBranches();
+}
+
+function branchStatusTip(bs) {
+  if (!bs || !bs.kind) return '';
+  const main = state.branchStatusMain || 'the default branch';
+  if (bs.kind === 'merged') {
+    return bs.how === 'merged' ? `All of its commits are already in ${main}.`
+      : `Its changes are already in ${main} (${bs.how} merge). Safe to delete.`;
+  }
+  if (bs.kind === 'gone') return `Its branch on the remote was deleted, but it is not clearly merged into ${main}. Check before deleting.`;
+  if (bs.kind === 'unpushed') return `Never pushed: ${bs.unique} commit${bs.unique === 1 ? '' : 's'} exist only on this computer.`;
+  return '';
+}
+
+// Branches the Clean up window offers: merged, or pushed-then-remote-deleted.
+function cleanupCandidates() {
+  const st = state.branchStatus || {};
+  return (state.branches || [])
+    .filter(b => !b.startsWith('remotes/') && b !== state.currentBranch && b !== state.defaultBranch)
+    .filter(b => st[b] && (st[b].kind === 'merged' || st[b].kind === 'gone'));
+}
+
+function updateCleanupButton() {
+  const btn = $('btn-cleanup');
+  if (!btn) return;
+  const n = cleanupCandidates().length;
+  btn.style.display = n ? '' : 'none';
+  btn.textContent = `Clean up (${n})`;
+  btn.title = `${n} local branch${n === 1 ? '' : 'es'} already merged or whose remote branch was deleted`;
+}
+
+function showCleanupModal() {
+  const st = state.branchStatus || {};
+  const list = cleanupCandidates();
+  if (!list.length) return;
+  const main = state.branchStatusMain || 'the default branch';
+  $('cleanup-note').textContent = `Only branches whose work is already in ${main}, or whose remote branch was deleted, are listed. Branches that were never pushed are never offered. Merged ones are ticked; review the others.`;
+  render('cleanup-list', list.map(b => {
+    const merged = st[b].kind === 'merged';
+    return html`
+      <label class="cleanup-row" title="${branchStatusTip(st[b])}">
+        <input type="checkbox" data-branch="${b}"${merged ? raw(' checked') : ''}>
+        <span class="cu-name">${b}</span>
+        <span class="cu-why">${merged ? (st[b].how === 'merged' ? 'merged' : st[b].how + ' merge') : 'remote deleted'}</span>
+      </label>`;
+  }));
+  $('cleanup-modal').style.display = 'flex';
+}
+function hideCleanupModal() { $('cleanup-modal').style.display = 'none'; }
+
+async function doCleanup() {
+  if (!state.repoPath) return;
+  const names = [...document.querySelectorAll('#cleanup-list input:checked')].map(i => i.dataset.branch);
+  if (!names.length) { hideCleanupModal(); return; }
+  const btn = $('cleanup-confirm');
+  btn.disabled = true;
+  let done = 0; const failed = [];
+  for (const n of names) {
+    const r = await window.gitApp.deleteBranch(state.repoPath, n);
+    if (r.success) done++; else failed.push(`${n}: ${r.error}`);
+  }
+  btn.disabled = false;
+  hideCleanupModal();
+  showToast(`Deleted ${done} branch${done === 1 ? '' : 'es'}`);
+  if (failed.length) alert(`Could not delete:\n${failed.join('\n')}`);
+  await loadRepo(state.repoPath);
 }
 
 // Build a nested tree from branch items, splitting each `path` on "/".
@@ -1402,8 +1487,12 @@ function renderBranchTree(node, opts, depth = 0) {
         it.stale ? `Stale — last commit ${new Date(it.lastCommit * 1000).toLocaleDateString()} (${relativeDate(it.lastCommit)})` : '',
         opts.remote ? 'Double-click to check out locally' : '',
         !opts.remote && opts.onRemote ? (opts.onRemote.has(it.value) ? `Also on ${opts.remoteName}` : `Local only — not pushed to ${opts.remoteName}`) : '',
+        opts.remote ? '' : branchStatusTip((state.branchStatus || {})[it.value]),
       ].filter(Boolean).join('\n');
       const title = tip ? raw(` title="${escHtml(tip)}"`) : '';
+      const bsInfo = opts.remote ? null : (state.branchStatus || {})[it.value];
+      const bsText = bsInfo && { merged: 'merged', gone: 'remote gone', unpushed: 'not pushed' }[bsInfo.kind];
+      const bsChip = bsText ? html`<span class="bs-chip bs-${bsInfo.kind}">${bsText}</span>` : '';
       const track = opts.remote ? null : (state.tracking || {})[it.value];
       const ab = track && (track.ahead || track.behind) ? html`
         <span class="branch-ab">
@@ -1414,6 +1503,7 @@ function renderBranchTree(node, opts, depth = 0) {
         <div class="${cls}" data-branch="${it.value}"${title}>
           ${raw(it.current ? ICON_CHECK : ICON_BRANCH)}
           <span class="branch-name">${label}</span>
+          ${bsChip}
           ${ab}
           ${!opts.remote && opts.onRemote ? raw(opts.onRemote.has(it.value) ? ICON_ON_ORIGIN : ICON_LOCAL_ONLY) : ''}
         </div>`;

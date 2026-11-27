@@ -92,7 +92,10 @@
             <div id="branches-empty" class="empty-sidebar">No repository open</div>
             <div id="branches-sections">
               <div class="branch-group" id="local-group">
-                <div class="sidebar-section-header">Local</div>
+                <div class="sidebar-section-header has-action">
+                  <span>Local</span>
+                  <button class="cleanup-btn" id="btn-cleanup" style="display:none;"></button>
+                </div>
                 <div id="local-branches-list" class="branch-list-scroll"></div>
               </div>
               <div class="branch-split-resizer" id="branch-split" title="Drag to resize"></div>
@@ -174,6 +177,21 @@
           <div class="modal-footer">
             <button class="secondary-btn" id="branch-cancel-2">Cancel</button>
             <button class="primary-btn" id="branch-confirm">Create</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clean up merged branches modal -->
+      <div id="cleanup-modal" class="modal-overlay" style="display:none;">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>Clean up branches</h2>
+            <button class="modal-close" id="cleanup-cancel">✕</button>
+          </div>
+          <div class="modal-body">
+            <p class="cleanup-note" id="cleanup-note"></p>
+            <div id="cleanup-list" class="cleanup-list"></div>
+            <div class="stash-actions"><button class="danger-btn" id="cleanup-confirm">Delete selected</button></div>
           </div>
         </div>
       </div>
