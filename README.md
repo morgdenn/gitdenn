@@ -50,7 +50,6 @@
 - **Copy filename / relative path** from the right-click menu on any file in a commit or in the uncommitted changes; in the uncommitted changes the same menu can stash just that file or folder into its own stash
 - **Merge** from a branch's right-click menu: merges it into the current branch; on conflict it cancels cleanly and changes nothing
 - **List / tree view** toggle for the file lists in the right-hand panel (a commit's files and the uncommitted changes); the choice is remembered, and collapsed folders stay collapsed
-- **Fast commit push** button pinned to the bottom of the right panel (away from Commit): stages all changes, generates a message, commits and pushes in one click
 - Right-click a local branch to **Pull branch** (fast-forwards it even if it isn't checked out), copy its name, rename, or delete
 - Double-click a remote branch to check it out locally; double-click a local branch to switch
 - **Create a branch**, **pull**, and **push** (auto-sets upstream) from the toolbar; **Fetch** is in the right-click menu of a repo in the Repos list

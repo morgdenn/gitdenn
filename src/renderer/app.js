@@ -136,7 +136,6 @@ function bindEvents() {
   $('btn-rebase').addEventListener('click', showRebaseModal);
   $('btn-push').addEventListener('click', () => doPush(false));
   $('btn-repo-sort').addEventListener('click', toggleRepoSort);
-  $('btn-fast-commit').addEventListener('click', doFastCommit);
   $('stash-cancel').addEventListener('click', hideStashModal);
   $('stash-confirm').addEventListener('click', doStashPush);
   $('stash-message').addEventListener('keydown', e => { if (e.key === 'Enter') doStashPush(); });
@@ -1110,7 +1109,6 @@ function resetDetailPanel() {
   closeFileDiff();
   detailContent.style.display = 'none';
   detailPlaceholder.style.display = 'flex';
-  $('fast-commit-bar').hidden = true;
   $('stash-bar').hidden = true;
 }
 
@@ -2255,7 +2253,6 @@ async function selectCommit(sha, idx) {
 
   detailPlaceholder.style.display = 'none';
   detailContent.style.display = 'block';
-  $('fast-commit-bar').hidden = !commit.isWip;
   $('stash-bar').hidden = !commit.isStash;
   $('stash-bar-menu').hidden = true;
 
@@ -2638,9 +2635,6 @@ async function renderWipDetail() {
   const staged = files.filter(f => f.staged);
   const unstaged = files.filter(f => f.unstaged);
   $('detail-author').textContent = `${staged.length} staged · ${unstaged.length} unstaged`;
-  // Fast commit lives in a bar pinned to the bottom of the panel, away from Commit.
-  $('fast-commit-bar').hidden = false;
-  $('btn-fast-commit').disabled = fastCommitBusy || !(staged.length || unstaged.length);
 
   // Keep the file whose diff is open highlighted across re-renders of the list.
   const isViewed = (f, kind) => {
@@ -2778,44 +2772,6 @@ async function doCommit() {
   detailContent.style.display = 'none';
   detailPlaceholder.style.display = 'flex';
   showToast('Committed');
-}
-
-// Stage everything → generate a message → commit → push, in one click.
-let fastCommitBusy = false;
-async function doFastCommit() {
-  if (!state.repoPath || fastCommitBusy) return;
-  fastCommitBusy = true;
-  const repo = state.repoPath;
-  const btn = $('btn-fast-commit');
-  const original = btn ? btn.innerHTML : '';
-  const step = text => { if (btn && btn.isConnected) btn.innerHTML = `<span class="btn-spinner"></span> ${text}`; };
-  if (btn) btn.disabled = true;
-  try {
-    step('Staging…');
-    await window.gitApp.stageAll(repo);
-
-    step('Generating message…');
-    const sug = await window.gitApp.suggestCommit(repo);
-    if (!sug.success) return alert(`Fast commit stopped: couldn't generate a message (${sug.error}). Your changes are staged.`);
-    const msg = (sug.message || '').trim();
-    if (!msg) return showToast('Nothing to commit');
-
-    step('Committing…');
-    const res = await window.gitApp.commit(repo, msg);
-    if (!res.success) return alert(`Fast commit stopped: commit failed (${res.error}). Your changes are staged.`);
-    state.commitMsg = '';
-    state.selectedSha = null;
-    await loadRepo(repo);
-    detailContent.style.display = 'none';
-    detailPlaceholder.style.display = 'flex';
-    showToast(`Committed: ${msg.split('\n')[0]}`);
-
-    // Same path as the Push button (spinner, force-push dialog if rejected).
-    await doPush(false);
-  } finally {
-    fastCommitBusy = false;
-    if (btn && btn.isConnected) { btn.disabled = false; btn.innerHTML = original; }
-  }
 }
 
 async function doAmend() {
